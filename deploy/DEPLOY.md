@@ -1,62 +1,109 @@
 # Deploy ke VPS (Termius + GitHub Actions)
 
+**Repo:** [github.com/derwinmhrdka/bot-financial-tracker](https://github.com/derwinmhrdka/bot-financial-tracker)
+
 Bot jalan 24/7 dengan **systemd** + deploy otomatis setiap push ke branch `main`.
 
 ## Ringkasan
 
-1. Push repo ke **GitHub** (tanpa secret).
-2. Setup **VPS sekali** lewat Termius (SSH).
-3. Pasang **GitHub Secrets** untuk SSH deploy.
-4. Setiap `git push` → Actions pull + restart bot.
+| Langkah | Di mana |
+|---------|---------|
+| 1. Kode di GitHub | Sudah: `derwinmhrdka/bot-financial-tracker` |
+| 2. Setup VPS sekali | Termius (SSH) |
+| 3. Secret bot | `.env.local` + `secrets/*.json` **hanya di VPS** |
+| 4. GitHub Actions Secrets | `VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY` |
+| 5. Deploy otomatis | Setiap `git push origin main` |
 
 ---
 
-## Bagian A — GitHub (dari PC Windows)
+## Bagian A — GitHub (PC Windows)
 
-### 1. Buat repo di GitHub
+Repo kamu: **https://github.com/derwinmhrdka/bot-financial-tracker**
 
-- https://github.com/new
-- Nama misalnya `bot-financial-tracker`
-- **Private** (disarankan)
-- Jangan centang README/license (repo lokal sudah ada isinya)
+### Clone baru / PC lain
 
-### 2. Push kode pertama kali
+```powershell
+git clone https://github.com/derwinmhrdka/bot-financial-tracker.git
+cd bot-financial-tracker
+copy deploy\env.local.example .env.local
+# edit .env.local (jangan di-commit)
+```
 
-Di PowerShell, folder project:
+### Project lokal sudah ada (sync ke GitHub)
 
 ```powershell
 cd D:\derwin.mahardika-iu\git\bot-financial-tracker
 
-git init
+git remote -v
+# Kalau belum ada origin:
+git remote add origin https://github.com/derwinmhrdka/bot-financial-tracker.git
+
 git add .
 git status
 # Pastikan TIDAK ada: .env.local, secrets/, data/*.db
 
-git commit -m "Initial commit: financial tracker Telegram bot"
+git commit -m "pesan commit kamu"
 git branch -M main
-git remote add origin https://github.com/USERNAME/bot-financial-tracker.git
 git push -u origin main
 ```
 
-Ganti `USERNAME` dengan akun GitHub kamu.
+SSH (opsional):
 
-> Kalau pakai SSH GitHub: `git@github.com:USERNAME/bot-financial-tracker.git`
+```powershell
+git remote set-url origin git@github.com:derwinmhrdka/bot-financial-tracker.git
+git push -u origin main
+```
+
+### Cek Actions
+
+Setelah push: https://github.com/derwinmhrdka/bot-financial-tracker/actions
 
 ---
 
 ## Bagian B — VPS sekali (Termius)
 
-### 1. Koneksi SSH
+### 1. Koneksi SSH di Termius
 
-- Buka **Termius** → New Host
-- Address = IP VPS, User = `ubuntu` / `root` (sesuai provider)
-- Authentication = password atau SSH key
+| Field | Nilai |
+|-------|--------|
+| Label | `fintracker-vps` |
+| Address | IP VPS kamu |
+| Port | `22` |
+| Username | `deploy` (disarankan) atau `root` untuk setup pertama |
+| Key / Password | sesuai VPS |
 
-### 2. Pasang dependensi & clone repo
+**Tidak ada user `ubuntu`?** Normal di beberapa VPS (cuma `root`). Dua opsi:
+
+**Opsi A — Login `root`, script buat user `deploy` otomatis:**
 
 ```bash
-# Ganti URL repo kamu
-export GITHUB_REPO=https://github.com/USERNAME/bot-financial-tracker.git
+whoami   # root
+cd /tmp/bot-financial-tracker   # setelah git clone
+export GITHUB_REPO=https://github.com/derwinmhrdka/bot-financial-tracker.git
+export APP_DIR=/opt/bot-financial-tracker
+bash deploy/vps-install.sh
+```
+
+Lalu di Termius ganti username ke **`deploy`** untuk SSH berikutnya. GitHub Secret `VPS_USER` = `deploy`.
+
+**Opsi B — Buat user manual dari root:**
+
+```bash
+adduser deploy
+usermod -aG sudo deploy
+mkdir -p /home/deploy/.ssh
+cp /root/.ssh/authorized_keys /home/deploy/.ssh/
+chown -R deploy:deploy /home/deploy/.ssh
+chmod 700 /home/deploy/.ssh && chmod 600 /home/deploy/.ssh/authorized_keys
+su - deploy
+```
+
+Lanjut install sebagai `deploy` (bukan root).
+
+### 2. Install & clone (copy-paste di VPS)
+
+```bash
+export GITHUB_REPO=https://github.com/derwinmhrdka/bot-financial-tracker.git
 export APP_DIR=/opt/bot-financial-tracker
 
 cd /tmp
@@ -66,16 +113,16 @@ chmod +x deploy/*.sh
 GITHUB_REPO="$GITHUB_REPO" APP_DIR="$APP_DIR" bash deploy/vps-install.sh
 ```
 
-### 3. Secret di server (tidak lewat GitHub)
+### 3. `.env.local` di server
 
 ```bash
-sudo nano /opt/bot-financial-tracker/.env.local
+nano /opt/bot-financial-tracker/.env.local
 ```
 
-Isi minimal (path **absolut** di Linux):
+Contoh (sesuaikan token & sheet ID):
 
 ```env
-TELEGRAM_BOT_TOKEN=...
+TELEGRAM_BOT_TOKEN=isi_dari_botfather
 TELEGRAM_ALLOWED_USERS=1103187440
 TELEGRAM_ADMIN_USERS=1103187440
 TELEGRAM_GROUP_REQUIRE_MENTION=false
@@ -83,24 +130,30 @@ TELEGRAM_GROUP_REQUIRE_MENTION=false
 FINTRACKER_DB_PATH=/opt/bot-financial-tracker/data/expenses.db
 
 GOOGLE_SHEETS_ENABLED=true
-GOOGLE_SHEETS_SPREADSHEET_ID=...
+GOOGLE_SHEETS_SPREADSHEET_ID=1G3zUbKKBKLou2-_1I0dtcFZItub7HiaQawIb72Wl-yc
 GOOGLE_SERVICE_ACCOUNT_FILE=/opt/bot-financial-tracker/secrets/google-service-account.json
 GOOGLE_SHEETS_WORKSHEET=DETAIL
 GOOGLE_SHEETS_LAYOUT=detail
 GOOGLE_SHEETS_CATEGORY_DEFAULT=Daily
 ```
 
-Upload JSON service account (Termius **SFTP** / file transfer):
+### 4. Upload service account (Termius SFTP)
+
+- Host: IP VPS yang sama
+- Path di server: `/opt/bot-financial-tracker/secrets/`
+- File: JSON dari Google Cloud (mis. `google-service-account.json`)
+
+Lalu di SSH:
 
 ```bash
-sudo mkdir -p /opt/bot-financial-tracker/secrets
-# upload file .json ke folder secrets/
 sudo chown -R ubuntu:ubuntu /opt/bot-financial-tracker/secrets
 sudo chown ubuntu:ubuntu /opt/bot-financial-tracker/.env.local
 sudo chmod 600 /opt/bot-financial-tracker/.env.local
 ```
 
-### 4. Jalankan bot
+(Ganti `deploy` / `ubuntu` sesuai user SSH kamu.)
+
+### 5. Start bot
 
 ```bash
 sudo systemctl start fintracker-bot
@@ -110,50 +163,60 @@ journalctl -u fintracker-bot -f
 
 Log sukses: `Bot aktif @nama_bot ...`
 
-**Matikan bot di PC** (`start-telegram-bot.ps1` / Hermes) — satu token hanya satu proses.
+**Matikan bot di PC** (`start-telegram-bot.ps1` / Hermes) — satu token Telegram = satu proses.
 
 ---
 
-## Bagian C — GitHub Actions (deploy otomatis)
+## Bagian C — GitHub Actions
 
-### 1. SSH key khusus deploy
+Settings repo: https://github.com/derwinmhrdka/bot-financial-tracker/settings/secrets/actions
 
-Di **PC** (PowerShell):
+### 1. Buat SSH key deploy (PC Windows)
 
 ```powershell
 ssh-keygen -t ed25519 -f "$env:USERPROFILE\.ssh\fintracker_deploy" -N '""'
+notepad "$env:USERPROFILE\.ssh\fintracker_deploy.pub"
+notepad "$env:USERPROFILE\.ssh\fintracker_deploy"
 ```
 
-- Public key: `fintracker_deploy.pub` → tambahkan ke VPS:
+- **`.pub`** → paste ke VPS `~/.ssh/authorized_keys`
+- **Tanpa .pub** → GitHub Secret `VPS_SSH_KEY` (semua baris termasuk `BEGIN`/`END`)
+
+Di VPS:
 
 ```bash
-# di VPS (Termius)
 mkdir -p ~/.ssh
-nano ~/.ssh/authorized_keys
-# paste isi fintracker_deploy.pub, simpan
 chmod 700 ~/.ssh
+nano ~/.ssh/authorized_keys
+# paste public key, simpan
 chmod 600 ~/.ssh/authorized_keys
 ```
 
-- Private key: isi file `fintracker_deploy` (tanpa .pub) → untuk GitHub Secret.
+### 2. Repository Secrets (wajib)
 
-### 2. Repository Secrets
+| Name | Value |
+|------|--------|
+| `VPS_HOST` | IP VPS, mis. `123.45.67.89` |
+| `VPS_USER` | `deploy` atau user SSH Termius (bukan `root`) |
+| `VPS_SSH_KEY` | isi private key `fintracker_deploy` |
 
-Repo GitHub → **Settings → Secrets and variables → Actions → New repository secret**
+Opsional:
 
-| Secret | Contoh |
-|--------|--------|
-| `VPS_HOST` | `123.45.67.89` |
-| `VPS_USER` | `ubuntu` |
-| `VPS_SSH_KEY` | isi penuh private key `fintracker_deploy` |
-| `VPS_PORT` | `22` (opsional) |
-| `VPS_APP_DIR` | `/opt/bot-financial-tracker` (opsional) |
+| Name | Value |
+|------|--------|
+| `VPS_PORT` | `22` |
+| `VPS_APP_DIR` | `/opt/bot-financial-tracker` |
 
-### 3. Izin git pull di VPS
+### 3. Tes deploy
 
-`VPS_USER` di GitHub Secrets harus **sama** dengan user yang memiliki folder app (biasanya `ubuntu`).
+```powershell
+cd D:\derwin.mahardika-iu\git\bot-financial-tracker
+git add .
+git commit -m "test deploy"
+git push origin main
+```
 
-Setelah push ke `main`, cek tab **Actions** di GitHub. Hijau = deploy OK.
+Buka: https://github.com/derwinmhrdka/bot-financial-tracker/actions → workflow **Deploy to VPS** harus hijau.
 
 Deploy manual: **Actions → Deploy to VPS → Run workflow**.
 
@@ -161,13 +224,13 @@ Deploy manual: **Actions → Deploy to VPS → Run workflow**.
 
 ## Bagian D — Operasi harian
 
-| Perintah | Fungsi |
-|----------|--------|
-| `journalctl -u fintracker-bot -f` | Lihat log live |
-| `sudo systemctl restart fintracker-bot` | Restart manual |
+| Perintah (VPS) | Fungsi |
+|----------------|--------|
+| `journalctl -u fintracker-bot -f` | Log live |
+| `sudo systemctl restart fintracker-bot` | Restart |
 | `sudo systemctl stop fintracker-bot` | Stop |
 
-Update kode: edit di PC → commit → push `main` → Actions deploy otomatis.
+Update kode: edit di PC → `git push origin main` → Actions restart otomatis.
 
 ---
 
@@ -175,11 +238,12 @@ Update kode: edit di PC → commit → push `main` → Actions deploy otomatis.
 
 | Gejala | Solusi |
 |--------|--------|
-| Actions gagal SSH | Cek `VPS_HOST`, key di `authorized_keys`, port firewall |
-| `Conflict: terminated by other getUpdates` | Hentikan bot di PC, restart di VPS |
+| Actions gagal SSH | Cek `VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY`, firewall port 22 |
+| `Permission denied (publickey)` | Public key belum di `authorized_keys` |
+| `Conflict: terminated by other getUpdates` | Stop bot di PC, `sudo systemctl restart fintracker-bot` |
 | Bot tidak balas | `journalctl -u fintracker-bot -n 50` |
-| Sheets gagal | Path JSON & share spreadsheet ke service account |
-| Permission denied pada git pull | `chown` folder app ke user SSH deploy |
+| Sheets gagal | Path JSON benar + spreadsheet di-share ke email service account |
+| `git pull` gagal di Actions | `sudo chown -R ubuntu:ubuntu /opt/bot-financial-tracker` |
 
 ---
 
@@ -187,8 +251,10 @@ Update kode: edit di PC → commit → push `main` → Actions deploy otomatis.
 
 | File | Fungsi |
 |------|--------|
-| `deploy/vps-install.sh` | Setup sekali |
-| `deploy/remote-deploy.sh` | Pull + pip + restart |
-| `deploy/fintracker-bot.service` | systemd unit |
+| `deploy/vps-install.sh` | Setup sekali di VPS |
+| `deploy/remote-deploy.sh` | `pip install` + restart (Actions) |
+| `deploy/fintracker-bot.service` | Unit systemd |
 | `deploy/start-bot.sh` | Muat `.env.local`, jalankan bot |
-| `.github/workflows/deploy.yml` | GitHub Actions |
+| `.github/workflows/deploy.yml` | Workflow deploy |
+
+**Repo clone URL:** `https://github.com/derwinmhrdka/bot-financial-tracker.git`

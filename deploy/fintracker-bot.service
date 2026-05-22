@@ -5,9 +5,9 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-# Ganti User= saat vps-install.sh jika deploy user bukan ubuntu
-User=ubuntu
-Group=ubuntu
+# User= diset otomatis oleh vps-install.sh (biasanya deploy)
+User=deploy
+Group=deploy
 WorkingDirectory=/opt/bot-financial-tracker
 ExecStart=/opt/bot-financial-tracker/deploy/start-bot.sh
 Restart=on-failure

@@ -1,14 +1,31 @@
 #!/usr/bin/env bash
 # Setup sekali di VPS (Ubuntu/Debian). Jalankan sebagai user dengan sudo.
-# Contoh: GITHUB_REPO=https://github.com/USER/bot-financial-tracker.git bash deploy/vps-install.sh
+# Contoh: GITHUB_REPO=https://github.com/derwinmhrdka/bot-financial-tracker.git bash deploy/vps-install.sh
 set -euo pipefail
 
 APP_DIR="${APP_DIR:-/opt/bot-financial-tracker}"
 GITHUB_REPO="${GITHUB_REPO:-}"
 
 if [[ $EUID -eq 0 ]]; then
-  echo "Jangan jalankan sebagai root. Pakai user biasa + sudo (mis. ubuntu)."
-  exit 1
+  DEPLOY_USER="${DEPLOY_USER:-deploy}"
+  if ! id "$DEPLOY_USER" &>/dev/null; then
+    echo "==> Buat user $DEPLOY_USER (VPS tanpa ubuntu)"
+    useradd -m -s /bin/bash "$DEPLOY_USER"
+    usermod -aG sudo "$DEPLOY_USER" 2>/dev/null || usermod -aG wheel "$DEPLOY_USER" 2>/dev/null || true
+    mkdir -p "/home/$DEPLOY_USER/.ssh"
+    if [[ -f /root/.ssh/authorized_keys ]]; then
+      cp /root/.ssh/authorized_keys "/home/$DEPLOY_USER/.ssh/"
+      chown -R "$DEPLOY_USER:$DEPLOY_USER" "/home/$DEPLOY_USER/.ssh"
+      chmod 700 "/home/$DEPLOY_USER/.ssh"
+      chmod 600 "/home/$DEPLOY_USER/.ssh/authorized_keys"
+    fi
+    echo "deploy ALL=(ALL) NOPASSWD:ALL" > "/etc/sudoers.d/$DEPLOY_USER" 2>/dev/null || true
+    chmod 440 "/etc/sudoers.d/$DEPLOY_USER" 2>/dev/null || true
+  fi
+  echo "==> Lanjut install sebagai user $DEPLOY_USER"
+  exec sudo -u "$DEPLOY_USER" \
+    GITHUB_REPO="$GITHUB_REPO" APP_DIR="$APP_DIR" DEPLOY_USER="$DEPLOY_USER" \
+    bash "$0"
 fi
 
 echo "==> Paket sistem"

@@ -1,5 +1,7 @@
 # Bot Financial Tracker
 
+Repo: **[github.com/derwinmhrdka/bot-financial-tracker](https://github.com/derwinmhrdka/bot-financial-tracker)**
+
 Catat pengeluaran lewat **Telegram**.
 
 **Disarankan:** bot langsung **tanpa Gemini** (cepat, tanpa kuota 429):
@@ -112,9 +114,13 @@ python track.py add --user-id telegram:1103187440 --text "makan 35rb"
 
 Panduan lengkap: **[deploy/DEPLOY.md](deploy/DEPLOY.md)** (Termius + push ke `main` → deploy otomatis).
 
+```bash
+export GITHUB_REPO=https://github.com/derwinmhrdka/bot-financial-tracker.git
+```
+
 Ringkas:
 
-1. Push repo ke GitHub (tanpa `.env.local` / `secrets/`).
+1. Repo: [derwinmhrdka/bot-financial-tracker](https://github.com/derwinmhrdka/bot-financial-tracker) (tanpa `.env.local` / `secrets/` di git).
 2. Di VPS: `GITHUB_REPO=... bash deploy/vps-install.sh`
 3. Isi `.env.local` + upload service account JSON di server.
 4. GitHub Secrets: `VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY`
