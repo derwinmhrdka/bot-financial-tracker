@@ -1,0 +1,29 @@
+# Gabungkan ke config.yaml Hermes (jangan timpa seluruh file)
+
+skills:
+  config:
+    financial_tracker:
+      repo_path: /opt/bot-financial-tracker
+
+gateway:
+  platforms:
+    telegram:
+      enabled: true
+
+telegram:
+  allow_from:
+    - "YOUR_TELEGRAM_USER_ID"
+
+display:
+  tool_progress: off
+  platforms:
+    telegram:
+      tool_progress: off
+
+agent:
+  disabled_toolsets:
+    - skills
+
+model:
+  default: gemini-2.5-flash
+  provider: gemini

@@ -1,0 +1,21 @@
+[Unit]
+Description=Financial Tracker Telegram Bot (no Gemini)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Ganti User= saat vps-install.sh jika deploy user bukan ubuntu
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/opt/bot-financial-tracker
+ExecStart=/opt/bot-financial-tracker/deploy/start-bot.sh
+Restart=on-failure
+RestartSec=10
+
+# Log ke journalctl -u fintracker-bot
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
