@@ -243,7 +243,27 @@ Update kode: edit di PC → `git push origin main` → Actions restart otomatis.
 | `Conflict: terminated by other getUpdates` | Stop bot di PC, `sudo systemctl restart fintracker-bot` |
 | Bot tidak balas | `journalctl -u fintracker-bot -n 50` |
 | Sheets gagal | Path JSON benar + spreadsheet di-share ke email service account |
-| `git pull` gagal di Actions | `sudo chown -R ubuntu:ubuntu /opt/bot-financial-tracker` |
+| `git pull` / local changes | Pakai `bash deploy/git-sync.sh` (bukan `git pull`) |
+| Permission denied git / Actions | `sudo chown -R deploy:deploy /opt/bot-financial-tracker` |
+
+### Git: `your local changes would be overwritten`
+
+File **yang di-track** di VPS berubah (script deploy, permission, dll.). `.env.local` & `secrets/` aman (gitignore).
+
+```bash
+cd /opt/bot-financial-tracker
+bash deploy/git-sync.sh
+bash deploy/remote-deploy.sh
+```
+
+Manual:
+
+```bash
+git fetch origin main
+git reset --hard origin/main
+```
+
+Cek: `git status` — jangan `git clean -fd` (bisa hapus `secrets/` & `data/`).
 
 ---
 
@@ -252,6 +272,7 @@ Update kode: edit di PC → `git push origin main` → Actions restart otomatis.
 | File | Fungsi |
 |------|--------|
 | `deploy/vps-install.sh` | Setup sekali di VPS |
+| `deploy/git-sync.sh` | Pull aman (`reset --hard`) |
 | `deploy/remote-deploy.sh` | `pip install` + restart (Actions) |
 | `deploy/fintracker-bot.service` | Unit systemd |
 | `deploy/start-bot.sh` | Muat `.env.local`, jalankan bot |

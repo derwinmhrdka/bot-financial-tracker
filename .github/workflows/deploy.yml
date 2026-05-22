@@ -23,7 +23,5 @@ jobs:
             APP_DIR="${{ secrets.VPS_APP_DIR }}"
             if [ -z "$APP_DIR" ]; then APP_DIR="/opt/bot-financial-tracker"; fi
             cd "$APP_DIR"
-            git remote -v | head -1
-            git fetch origin main
-            git reset --hard origin/main
+            bash deploy/git-sync.sh
             bash deploy/remote-deploy.sh

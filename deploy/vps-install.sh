@@ -48,7 +48,8 @@ if [[ ! -d "$APP_DIR/.git" ]]; then
 fi
 
 cd "$APP_DIR"
-git pull --ff-only || true
+chmod +x deploy/git-sync.sh 2>/dev/null || true
+bash deploy/git-sync.sh
 
 echo "==> Python venv + dependensi"
 bash deploy/remote-deploy.sh
