@@ -58,8 +58,17 @@ cd "$APP_DIR"
 chmod +x deploy/git-sync.sh 2>/dev/null || true
 bash deploy/git-sync.sh
 
+sudo mkdir -p "$APP_DIR/data" "$APP_DIR/secrets"
+
+if [[ ! -f .env.local ]]; then
+  cp deploy/env.local.example .env.local
+  echo "==> .env.local dibuat dari contoh — edit sebelum start bot"
+fi
+
 echo "==> Python venv + dependensi"
-bash deploy/remote-deploy.sh
+bash deploy/remote-deploy.sh || {
+  echo "WARN: remote-deploy gagal (biasanya .env.local belum diisi) — lanjut setup systemd"
+}
 
 echo "==> systemd (User=$DEPLOY_USER)"
 sudo cp deploy/fintracker-bot.service /etc/systemd/system/
@@ -69,16 +78,12 @@ sudo sed -i "s|^Group=.*|Group=$DEPLOY_USER|" /etc/systemd/system/fintracker-bot
 sudo chown -R "$DEPLOY_USER":"$DEPLOY_USER" "$APP_DIR"
 sudo chmod +x "$APP_DIR/deploy/start-bot.sh" "$APP_DIR/deploy/remote-deploy.sh"
 
-if [[ ! -f .env.local ]]; then
-  cp deploy/env.local.example .env.local
-  echo ""
-  echo "PENTING: edit $APP_DIR/.env.local (token, sheets, path absolut)"
-  echo "  nano $APP_DIR/.env.local"
-  echo "Upload service account JSON ke: $APP_DIR/secrets/"
-fi
+sudo chown -R "$DEPLOY_USER":"$DEPLOY_USER" "$APP_DIR/data" "$APP_DIR/secrets" "$APP_DIR/.env.local" 2>/dev/null || true
 
-sudo mkdir -p "$APP_DIR/data" "$APP_DIR/secrets"
-sudo chown -R "$DEPLOY_USER":"$DEPLOY_USER" "$APP_DIR/data" "$APP_DIR/secrets"
+echo ""
+echo "PENTING: edit $APP_DIR/.env.local (token, sheets, path absolut)"
+echo "  nano $APP_DIR/.env.local"
+echo "Upload service account JSON ke: $APP_DIR/secrets/"
 
 SUDOERS="/etc/sudoers.d/fintracker-bot"
 echo "$DEPLOY_USER ALL=(ALL) NOPASSWD: /bin/systemctl restart fintracker-bot, /bin/systemctl start fintracker-bot, /bin/systemctl stop fintracker-bot, /bin/systemctl enable fintracker-bot, /bin/systemctl daemon-reload" | sudo tee "$SUDOERS" >/dev/null
