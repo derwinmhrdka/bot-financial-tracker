@@ -138,16 +138,36 @@ def _layout() -> str:
     return os.environ.get("GOOGLE_SHEETS_LAYOUT", "default").strip().lower()
 
 
+def sheets_config_error() -> str | None:
+    """Penyebab sheets_config; None jika OK."""
+    if not is_enabled():
+        return "GOOGLE_SHEETS_ENABLED=false"
+    sheet_id = os.environ.get("GOOGLE_SHEETS_SPREADSHEET_ID", "").strip()
+    creds = os.environ.get("GOOGLE_SERVICE_ACCOUNT_FILE", "").strip()
+    if not sheet_id:
+        return "GOOGLE_SHEETS_SPREADSHEET_ID kosong"
+    if not creds:
+        return "GOOGLE_SERVICE_ACCOUNT_FILE kosong"
+    path = Path(creds).expanduser()
+    if not path.is_absolute():
+        repo = Path(__file__).resolve().parent.parent
+        path = (repo / path).resolve()
+    if not path.is_file():
+        return f"file kredensial tidak ada: {path}"
+    return None
+
+
 def _config() -> tuple[str, Path, str] | None:
+    err = sheets_config_error()
+    if err:
+        logger.warning("Google Sheets: %s", err)
+        return None
     sheet_id = os.environ.get("GOOGLE_SHEETS_SPREADSHEET_ID", "").strip()
     creds = os.environ.get("GOOGLE_SERVICE_ACCOUNT_FILE", "").strip()
     worksheet = os.environ.get("GOOGLE_SHEETS_WORKSHEET", "Pengeluaran").strip() or "Pengeluaran"
-    if not sheet_id or not creds:
-        return None
     path = Path(creds).expanduser()
-    if not path.is_file():
-        logger.warning("Google Sheets: file kredensial tidak ada: %s", path)
-        return None
+    if not path.is_absolute():
+        path = (Path(__file__).resolve().parent.parent / path).resolve()
     return sheet_id, path, worksheet
 
 
@@ -306,7 +326,8 @@ def _fetch_budget_rows(month: str | None = None) -> tuple[str, list[dict[str, An
         return {"ok": False, "error": "sheets_disabled"}
     cfg = _config()
     if not cfg:
-        return {"ok": False, "error": "sheets_config"}
+        detail = sheets_config_error() or "sheets_config"
+        return {"ok": False, "error": "sheets_config", "detail": detail}
     spreadsheet_id, creds_path, _detail_ws = cfg
     month_sheet = month_to_budget_sheet(month)
     creds = _credentials(creds_path)

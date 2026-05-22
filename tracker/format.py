@@ -107,6 +107,9 @@ def format_sisa_all(data: dict[str, Any]) -> str:
         sheet = data.get("month_sheet") or ""
         if data.get("error") == "sheets_disabled":
             return "❌ Google Sheets tidak aktif."
+        if data.get("error") == "sheets_config":
+            d = data.get("detail") or "cek .env.local & file secrets/*.json di VPS"
+            return f"❌ Sheets config: {d}"
         return f"❌ Tidak bisa baca sisa ({data.get('error', 'error')}) {sheet}.".strip()
 
     sheet = data.get("month_sheet", "")
@@ -132,6 +135,9 @@ def format_sisa(data: dict[str, Any]) -> str:
             return f"❌ Kategori '{cat}' tidak ditemukan di sheet {sheet}."
         if data.get("error") == "sheets_disabled":
             return "❌ Google Sheets tidak aktif."
+        if data.get("error") == "sheets_config":
+            d = data.get("detail") or "cek .env.local & secrets/*.json"
+            return f"❌ Sheets config: {d}"
         return f"❌ Tidak bisa baca sisa ({data.get('error', 'error')})."
 
     cat = data["category"]
