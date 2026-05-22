@@ -19,8 +19,7 @@ if [[ $EUID -eq 0 ]]; then
       chmod 700 "/home/$DEPLOY_USER/.ssh"
       chmod 600 "/home/$DEPLOY_USER/.ssh/authorized_keys"
     fi
-    echo "deploy ALL=(ALL) NOPASSWD:ALL" > "/etc/sudoers.d/$DEPLOY_USER" 2>/dev/null || true
-    chmod 440 "/etc/sudoers.d/$DEPLOY_USER" 2>/dev/null || true
+    # Hanya sudo untuk systemd bot ini — tidak mengubah app lain di VPS
   fi
   echo "==> Lanjut install sebagai user $DEPLOY_USER"
   exec sudo -u "$DEPLOY_USER" \
@@ -29,8 +28,16 @@ if [[ $EUID -eq 0 ]]; then
 fi
 
 echo "==> Paket sistem"
-sudo apt-get update -qq
+if ! sudo apt-get update -qq --allow-releaseinfo-change 2>/dev/null; then
+  echo "WARN: apt-get update gagal (sering GPG/key kedaluwarsa). Coba perbaiki:"
+  echo "  sudo apt-get clean && sudo rm -rf /var/lib/apt/lists/*"
+  echo "  sudo apt-get update --allow-releaseinfo-change"
+  echo "  Lihat deploy/DEPLOY.md bagian 'Apt: GPG error'"
+  sudo apt-get update -qq || true
+fi
 sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
+  python3 python3-venv python3-pip git ca-certificates \
+  || sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
   python3 python3-venv python3-pip git ca-certificates
 
 DEPLOY_USER="${DEPLOY_USER:-$USER}"

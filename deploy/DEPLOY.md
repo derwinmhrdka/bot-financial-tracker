@@ -14,6 +14,38 @@ Bot jalan 24/7 dengan **systemd** + deploy otomatis setiap push ke branch `main`
 | 4. GitHub Actions Secrets | `VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY` |
 | 5. Deploy otomatis | Setiap `git push origin main` |
 
+## VPS sudah ada aplikasi lain
+
+Bot ini **terisolasi** — tidak mengganti nginx, database, atau service app lain.
+
+| Yang dipakai bot | Tidak disentuh |
+|------------------|----------------|
+| Folder `/opt/bot-financial-tracker` (atau `APP_DIR` lain) | Folder app lain |
+| Service systemd `fintracker-bot` saja | `systemctl restart` service lain |
+| Python venv `.venv` di dalam folder bot | Python/global venv app lain |
+| Outbound HTTPS ke Telegram & Google | Port inbound baru (tidak buka port) |
+
+**Hati-hati:**
+
+1. **`apt-get update`** — mempengaruhi seluruh server (GPG error tadi bisa dari repo sistem, bukan dari bot). Perbaiki apt dengan hati-hati; jangan ubah `sources.list` app lain tanpa backup.
+2. **Token Telegram** — satu token = satu proses. Kalau app lain sudah pakai token yang sama, hentikan salah satu.
+3. **User SSH** — boleh pakai user yang sudah ada (mis. user deploy app lain) asal punya `sudo` untuk `systemctl fintracker-bot`:
+
+   ```bash
+   export DEPLOY_USER=nama_user_yang_sudah_ada
+   export APP_DIR=/home/nama_user/apps/bot-financial-tracker
+   ```
+
+4. **GitHub Actions** — `git reset --hard` **hanya** di folder bot, tidak di repo app lain.
+5. **RAM/CPU** — bot ringan; kalau VPS kecil, cek `free -h` setelah `systemctl start fintracker-bot`.
+
+Cek service lain tidak ikut restart:
+
+```bash
+systemctl list-units --type=service --state=running
+sudo systemctl status fintracker-bot
+```
+
 ---
 
 ## Bagian A — GitHub (PC Windows)
@@ -102,6 +134,15 @@ Lanjut install sebagai `deploy` (bukan root).
 
 ### 2. Install & clone (copy-paste di VPS)
 
+**`/tmp` vs `/opt`:**
+
+| Path | Fungsi |
+|------|--------|
+| `/tmp/bot-financial-tracker` | Hanya **tempat clone sementara** untuk menjalankan script install |
+| `$APP_DIR` (default `/opt/bot-financial-tracker`) | **Lokasi permanen** bot — systemd, `.env.local`, database |
+
+Script `vps-install.sh` akan **`git clone` lagi ke `$APP_DIR`**. Yang dipakai bot sehari-hari = **`$APP_DIR`**, bukan `/tmp`.
+
 ```bash
 export GITHUB_REPO=https://github.com/derwinmhrdka/bot-financial-tracker.git
 export APP_DIR=/opt/bot-financial-tracker
@@ -112,6 +153,29 @@ cd bot-financial-tracker
 chmod +x deploy/*.sh
 GITHUB_REPO="$GITHUB_REPO" APP_DIR="$APP_DIR" bash deploy/vps-install.sh
 ```
+
+**Sudah cuma punya folder di `/tmp`?** Pilih salah satu:
+
+*Pindah ke `/opt` (disarankan):*
+
+```bash
+export APP_DIR=/opt/bot-financial-tracker
+sudo mkdir -p "$APP_DIR"
+sudo cp -a /tmp/bot-financial-tracker/. "$APP_DIR/"
+sudo chown -R "$(whoami):$(whoami)" "$APP_DIR"
+cd "$APP_DIR"
+bash deploy/vps-install.sh
+```
+
+*Atau tetap di `/tmp` (boleh, tapi bisa hilang saat reboot server):*
+
+```bash
+export APP_DIR=/tmp/bot-financial-tracker
+cd "$APP_DIR"
+bash deploy/vps-install.sh
+```
+
+GitHub Secret `VPS_APP_DIR` **harus sama** dengan `APP_DIR` yang dipilih.
 
 ### 3. `.env.local` di server
 
@@ -264,6 +328,49 @@ git reset --hard origin/main
 ```
 
 Cek: `git status` — jangan `git clean -fd` (bisa hapus `secrets/` & `data/`).
+
+### Apt: `GPG error` / `The following signatures were invalid` / `NO_PUBKEY`
+
+Repo sistem VPS kedaluwarsa atau kunci GPG hilang. Jalankan sebagai **root** atau `sudo`:
+
+```bash
+sudo apt-get clean
+sudo rm -rf /var/lib/apt/lists/*
+sudo apt-get update --allow-releaseinfo-change
+```
+
+Kalau muncul `NO_PUBKEY XXXXX`:
+
+```bash
+# ganti XXXXX dengan angka dari pesan error
+sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys XXXXX
+sudo apt-get update
+```
+
+Ubuntu 22.04+ alternatif:
+
+```bash
+sudo apt-get install -y ca-certificates gnupg
+sudo apt-get update
+```
+
+Masih gagal — cek versi OS & repo:
+
+```bash
+cat /etc/os-release
+ls /etc/apt/sources.list /etc/apt/sources.list.d/
+```
+
+VPS dengan Ubuntu **EOL** (mis. 18.04 tanpa support): upgrade ke **22.04/24.04** atau ganti `sources.list` ke `old-releases.ubuntu.com` (sementara).
+
+Setelah `apt-get update` sukses, ulangi:
+
+```bash
+cd /opt/bot-financial-tracker
+bash deploy/vps-install.sh
+# atau lanjut manual:
+sudo apt-get install -y python3 python3-venv python3-pip git
+```
 
 ---
 
