@@ -46,10 +46,14 @@ def init_schema(conn: sqlite3.Connection) -> None:
             category TEXT,
             note TEXT NOT NULL DEFAULT '',
             source TEXT,
+            attributed_to TEXT,
             created_at TEXT NOT NULL
         )
         """
     )
+    cols = {row[1] for row in conn.execute("PRAGMA table_info(expenses)")}
+    if "attributed_to" not in cols:
+        conn.execute("ALTER TABLE expenses ADD COLUMN attributed_to TEXT")
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_expenses_user_created "
         "ON expenses (user_id, created_at DESC)"
@@ -70,14 +74,15 @@ def add_expense(
     source: str | None = None,
     currency: str = "IDR",
     created_at: str | None = None,
+    attributed_to: str | None = None,
 ) -> dict[str, Any]:
     ts = created_at or now_iso()
     cur = conn.execute(
         """
-        INSERT INTO expenses (user_id, amount, currency, category, note, source, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO expenses (user_id, amount, currency, category, note, source, attributed_to, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """,
-        (user_id, amount, currency, category, note, source, ts),
+        (user_id, amount, currency, category, note, source, attributed_to, ts),
     )
     row_id = cur.lastrowid
     row = conn.execute("SELECT * FROM expenses WHERE id = ?", (row_id,)).fetchone()

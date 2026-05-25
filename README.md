@@ -56,6 +56,7 @@ Setelah ubah skill/AGENTS: `.\deploy\install.ps1` (otomatis set `tool_progress: 
 | `undo` | Hapus terakhir |
 | `sisa daily` / `sisa semua` | Sisa anggaran (sheet MAY/JUNE) |
 | `hapus #12` | Hapus transaksi by id (+ sheet) |
+| `pindah daily ke entertain 100k` | Pindah saldo (Daily +100k, Entertain -100k) |
 | `bantuan` | Panduan |
 
 ### Kelola user (admin saja)
@@ -156,9 +157,11 @@ GOOGLE_SHEETS_WORKSHEET=Pengeluaran
 
 **Layout `detail`** (spreadsheet existing, tab mis. `DETAIL`):
 
-| A Date | B Category | C Detail | D Cost | E Periode | F (id bot, untuk undo) |
-|--------|------------|----------|--------|-----------|-------------------------|
-| 2026-05-22 | Daily | Makan siang | 35000 | May | 12 |
+| A Date | B Category | C Detail | D Cost | E Periode | F (#id) | G (nama) |
+|--------|------------|----------|--------|-----------|---------|----------|
+| 2026-05-22 | Daily | Makan siang | 35000 | May | 12 | Anggita |
+
+Akhiran pesan: `- Anggita`, `-A`, `- D` → kolom **G** (teks setelah `-`, tanpa ubah).
 
 - `Category` Mahardiora: **Primary** (listrik, air, wifi, infaq, IPL, zakat, sedekah, kur mobil, …), **Maintenance** (bengkel, cuci AC, keran, kabel, …), **Savings** (tabungan, reksadana, emas), **Daily** (belanja, indomaret, makanan), **Transport**, dll. (default `Daily`)
 - `Periode`: nama bulan Inggris dari tanggal (`April`, `May`, …)

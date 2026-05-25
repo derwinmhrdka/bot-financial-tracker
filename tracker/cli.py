@@ -29,10 +29,12 @@ from tracker.format import (
     format_sisa_all,
     format_summary,
     format_undo,
+    format_transfer,
 )
 from tracker.parse import parse_message
+from tracker.transfer import parse_transfer
 
-_COMMANDS = frozenset({"add", "list", "summary", "undo", "delete", "sisa", "help"})
+_COMMANDS = frozenset({"add", "list", "summary", "undo", "delete", "sisa", "transfer", "help"})
 _FLAG_TAKES_VALUE = frozenset(
     {"--user-id", "--amount", "--category", "--note", "--text", "--source", "--limit", "--month", "--db"}
 )
@@ -101,6 +103,10 @@ def _normalize_argv(argv: list[str]) -> list[str]:
         return global_flags
 
     joined = " ".join(rest)
+    if rest[0] not in _COMMANDS and re.search(r"\b(pindah|transfer)\b", joined, re.IGNORECASE):
+        uid = _default_user_id()
+        if uid:
+            return global_flags + ["transfer", "--user-id", uid, "--text", joined]
     if rest[0] not in _COMMANDS and any(k in joined.lower() for k in ("sisa", "saldo")):
         uid = _default_user_id()
         if uid:
@@ -179,6 +185,9 @@ def cmd_add(args: argparse.Namespace) -> int:
         amount = amount or parsed.amount
         note = note or parsed.note
         category = category or parsed.category
+        attributed_to = getattr(parsed, "attributed_to", None)
+    else:
+        attributed_to = None
     if amount is None:
         return _emit(
             {"ok": False, "error": "missing_amount", "telegram_reply": format_error("Jumlah wajib diisi")},
@@ -192,6 +201,7 @@ def cmd_add(args: argparse.Namespace) -> int:
             category=category,
             note=note,
             source=args.source,
+            attributed_to=attributed_to,
         )
     sheets.sync_append(row)
     reply = format_add(row) + sheets.low_balance_warning(row)
@@ -272,6 +282,51 @@ def cmd_sisa(args: argparse.Namespace) -> int:
     return _emit({**data, "telegram_reply": format_sisa(data)}, 0 if data.get("ok") else 1)
 
 
+def cmd_transfer(args: argparse.Namespace) -> int:
+    spec = parse_transfer(args.text or "")
+    if not spec:
+        return _emit(
+            {
+                "ok": False,
+                "error": "parse_failed",
+                "telegram_reply": format_error(
+                    "Format: pindah daily ke entertain 100k (atau: transfer ... to ...)"
+                ),
+            },
+            1,
+        )
+    note_from = f"Pindah ke {spec.to_category}"
+    note_to = f"Pindah dari {spec.from_category}"
+    with connect(Path(args.db) if args.db else None) as conn:
+        # Dari kategori sumber: +nominal (pakai anggaran daily)
+        out_row = add_expense(
+            conn,
+            user_id=args.user_id,
+            amount=spec.amount,
+            category=spec.from_category,
+            note=note_from,
+            source="transfer",
+        )
+        # Ke kategori tujuan: -nominal (sisa entertain naik)
+        in_row = add_expense(
+            conn,
+            user_id=args.user_id,
+            amount=-spec.amount,
+            category=spec.to_category,
+            note=note_to,
+            source="transfer",
+        )
+    sheets.sync_append(out_row)
+    sheets.sync_append(in_row)
+    return _emit(
+        {
+            "ok": True,
+            "transfer": {"out": out_row, "in": in_row},
+            "telegram_reply": format_transfer(out_row, in_row),
+        }
+    )
+
+
 def cmd_help(_args: argparse.Namespace) -> int:
     return _emit({"ok": True, "telegram_reply": format_help()})
 
@@ -317,6 +372,11 @@ def main(argv: list[str] | None = None) -> int:
     del_p.add_argument("--user-id", required=True)
     del_p.add_argument("--id", type=int, required=True)
     del_p.set_defaults(func=cmd_delete)
+
+    tr_p = sub.add_parser("transfer")
+    tr_p.add_argument("--user-id", required=True)
+    tr_p.add_argument("--text", required=True)
+    tr_p.set_defaults(func=cmd_transfer)
 
     sub.add_parser("help").set_defaults(func=cmd_help)
 

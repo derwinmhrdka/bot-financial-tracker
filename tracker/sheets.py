@@ -270,6 +270,7 @@ def resolve_budget_category(name: str) -> str | None:
         "emergency": "Emergency",
         "entertain": "Entertain",
         "entertainment": "Entertain",
+        "entertaint": "Entertain",
         "family": "Family",
         "maintenance": "Maintenance",
         "personalsavings": "Personal Savings",
@@ -434,6 +435,8 @@ def low_balance_warning(expense: dict[str, Any]) -> str:
     """Peringatan jika sisa kategori sheet < ambang (default 10% PLAN)."""
     if not is_enabled():
         return ""
+    if int(expense.get("amount") or 0) <= 0:
+        return ""
     try:
         pct_limit = float(os.environ.get("FINTRACKER_SISA_WARN_PCT", "0.1"))
     except ValueError:
@@ -502,6 +505,7 @@ def _row_values(expense: dict[str, Any]) -> list[Any]:
             expense.get("amount"),
             _sheet_periode(str(expense.get("created_at", ""))),
             _sheet_id_cell(expense.get("id")),
+            expense.get("attributed_to") or "",
         ]
     return [
         expense.get("id"),
@@ -517,7 +521,7 @@ def _row_values(expense: dict[str, Any]) -> list[Any]:
 
 def _append_range(worksheet: str) -> str:
     if _layout() == "detail":
-        return f"'{worksheet}'!A:F"
+        return f"'{worksheet}'!A:G"
     return f"'{worksheet}'!A:H"
 
 

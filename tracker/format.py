@@ -7,19 +7,34 @@ from typing import Any
 
 
 def format_idr(amount: int) -> str:
-    return f"Rp {amount:,}".replace(",", ".")
+    n = int(amount)
+    s = f"{abs(n):,}".replace(",", ".")
+    return f"-Rp {s}" if n < 0 else f"Rp {s}"
+
+
+def format_transfer(from_row: dict[str, Any], to_row: dict[str, Any]) -> str:
+    amt = abs(int(from_row["amount"]))
+    return (
+        f"✅ Pindah saldo {format_idr(amt)}\n"
+        f"📤 {from_row.get('category')}: {format_idr(int(from_row['amount']))} · #{from_row['id']}\n"
+        f"📥 {to_row.get('category')}: {format_idr(int(to_row['amount']))} · #{to_row['id']}"
+    )
 
 
 def format_add(expense: dict[str, Any]) -> str:
     cat = expense.get("category") or "lainnya"
     note = (expense.get("note") or "").strip() or "—"
-    return (
-        "✅ Pengeluaran tercatat\n"
-        f"📝 {note}\n"
-        f"💰 {format_idr(int(expense['amount']))}\n"
-        f"🏷 {cat}\n"
-        f"🆔 #{expense['id']}"
-    )
+    who = (expense.get("attributed_to") or "").strip()
+    lines = [
+        "✅ Pengeluaran tercatat",
+        f"📝 {note}",
+        f"💰 {format_idr(int(expense['amount']))}",
+        f"🏷 {cat}",
+    ]
+    if who:
+        lines.append(f"👤 {who}")
+    lines.append(f"🆔 #{expense['id']}")
+    return "\n".join(lines)
 
 
 def format_summary(data: dict[str, Any]) -> str:
@@ -62,9 +77,11 @@ def format_list(rows: list[dict[str, Any]], *, month: str | None = None) -> str:
     for row in rows:
         note = (row.get("note") or "").strip() or "—"
         cat = row.get("category") or "lainnya"
+        who = (row.get("attributed_to") or "").strip()
+        who_bit = f" · {who}" if who else ""
         lines.append(
             f"#{row['id']} {_short_date(row['created_at'])}\n"
-            f"   {note} · {format_idr(int(row['amount']))} · {cat}"
+            f"   {note} · {format_idr(int(row['amount']))} · {cat}{who_bit}"
         )
     return "\n".join(lines)
 
@@ -164,6 +181,8 @@ def format_help() -> str:
         "• total — ringkasan DB\n"
         "• sisa daily / sisa semua — anggaran (Google Sheet)\n"
         "• Kategori di pesan: entertain jus 10k · jus 10k daily · transport gojek 25rb\n"
+        "• Nama di akhir (kolom G): makan 35rb - Anggita · jus 10k -A · kopi 5rb - D\n"
+        "• Pindah saldo: pindah daily ke entertain 100k\n"
         "• list 10 — riwayat\n"
         "• undo — hapus terakhir\n"
         "• hapus #12 — hapus by id\n\n"

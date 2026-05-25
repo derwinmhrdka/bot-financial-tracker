@@ -109,6 +109,8 @@ def is_tracker_message(text: str) -> bool:
         return True
     if re.search(r"(?:hapus|delete)\s*#?\s*\d+", lower):
         return True
+    if re.search(r"\b(pindah|transfer)\b", lower):
+        return True
     if any(k in lower for k in ("sisa", "saldo")):
         return True
     if any(k in lower for k in ("total", "ringkasan", "summary", "rekap")):
@@ -146,7 +148,11 @@ def route_message(text: str, user_id: int) -> str:
         code, reply = _invoke(["delete", "--user-id", uid, "--id", del_m.group(1)])
         return reply
 
-    if any(k in lower for k in ("sisa", "saldo")):
+    if re.search(r"\b(pindah|transfer)\b", lower):
+        code, reply = _invoke(["transfer", "--user-id", uid, "--text", raw])
+        return reply
+
+    if any(k in lower for k in ("sisa", "saldo")) and "pindah" not in lower:
         args = ["sisa", "--user-id", uid, "--text", raw]
         if month:
             args.extend(["--month", month])
@@ -178,7 +184,7 @@ def route_message(text: str, user_id: int) -> str:
         return reply
 
     code, reply = _invoke(["help"])
-    return reply + "\n\n💡 Contoh: makan 35rb · sisa daily · total · list 5 · undo"
+    return reply + "\n\n💡 Contoh: makan 35rb · pindah daily ke entertain 100k · sisa daily · undo"
 
 
 def parse_message_candidate(text: str) -> bool:
