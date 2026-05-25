@@ -308,6 +308,7 @@ Update kode: edit di PC → `git push origin main` → Actions restart otomatis.
 | Bot tidak balas | `journalctl -u fintracker-bot -n 50` |
 | Sheets gagal | Path JSON benar + spreadsheet di-share ke email service account |
 | `git pull` / local changes | Pakai `bash deploy/git-sync.sh` (bukan `git pull`) |
+| `dubious ownership` di Actions | `git-sync.sh` sudah set `safe.directory`; atau `chown -R root:root /opt/bot-financial-tracker` |
 | Permission denied git / Actions | `sudo chown -R deploy:deploy /opt/bot-financial-tracker` |
 
 ### Git: `your local changes would be overwritten`

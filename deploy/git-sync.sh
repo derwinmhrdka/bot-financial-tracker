@@ -12,6 +12,9 @@ if [[ ! -d .git ]]; then
   exit 1
 fi
 
+# SSH deploy sebagai root, folder mungkin milik deploy → hindari "dubious ownership"
+git config --global --add safe.directory "$APP_DIR"
+
 echo "==> git fetch origin $BRANCH"
 git fetch origin "$BRANCH"
 echo "==> git reset --hard origin/$BRANCH"
