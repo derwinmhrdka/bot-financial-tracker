@@ -163,6 +163,7 @@ def format_help() -> str:
         "Perintah:\n"
         "• total — ringkasan DB\n"
         "• sisa daily / sisa semua — anggaran (Google Sheet)\n"
+        "• Kategori di pesan: entertain jus 10k · jus 10k daily · transport gojek 25rb\n"
         "• list 10 — riwayat\n"
         "• undo — hapus terakhir\n"
         "• hapus #12 — hapus by id\n\n"

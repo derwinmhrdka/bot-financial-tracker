@@ -138,7 +138,7 @@ def guess_category(text: str) -> str | None:
 
 
 def parse_message(text: str) -> ParsedExpense | None:
-    """Parse e.g. 'makan siang 35rb' or 'gojek 15k ke kantor'."""
+    """Parse e.g. 'makan siang 35rb', 'Entertain jus 10k', 'jus 10k daily'."""
     cleaned = text.strip()
     if not cleaned:
         return None
@@ -148,6 +148,14 @@ def parse_message(text: str) -> ParsedExpense | None:
         return None
 
     amount, remainder = extracted
-    note = remainder or cleaned
-    category = guess_category(cleaned)
+    from tracker.sheets import find_explicit_sheet_category
+
+    sheet_cat, _ = find_explicit_sheet_category(cleaned)
+    if sheet_cat:
+        _, note = find_explicit_sheet_category(remainder or cleaned)
+        note = note or remainder or cleaned
+        category = sheet_cat
+    else:
+        note = remainder or cleaned
+        category = guess_category(note or cleaned)
     return ParsedExpense(amount=amount, note=note, category=category)

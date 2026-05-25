@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -207,6 +208,44 @@ def _sheet_date(created_at: str) -> str:
 
 def _sheet_periode(created_at: str) -> str:
     return _MONTH_EN[_parse_created_at(created_at).month]
+
+
+# Hint kata → kategori sheet (urut panjang dulu agar "personal savings" sebelum "savings")
+_CATEGORY_PARSE_HINTS: tuple[tuple[str, str], ...] = (
+    ("personal savings", "Personal Savings"),
+    ("entertainment", "Entertain"),
+    ("entertain", "Entertain"),
+    ("maintenance", "Maintenance"),
+    ("emergency", "Emergency"),
+    ("transport", "Transport"),
+    ("savings", "Savings"),
+    ("family", "Family"),
+    ("primary", "Primary"),
+    ("daily", "Daily"),
+)
+
+
+def find_explicit_sheet_category(text: str) -> tuple[str | None, str]:
+    """
+    Ambil kategori Mahardiora dari pesan jika disebut eksplisit.
+    Contoh: 'Entertain jus 10k' → Entertain; 'jus 10k daily' → Daily.
+    Jika beberapa kategori, yang paling akhir di teks yang dipakai.
+    """
+    raw = (text or "").strip()
+    if not raw:
+        return None, raw
+    lower = raw.lower()
+    hits: list[tuple[int, int, str]] = []
+    for hint, label in _CATEGORY_PARSE_HINTS:
+        for m in re.finditer(rf"\b{re.escape(hint)}\b", lower):
+            hits.append((m.start(), m.end(), label))
+    if not hits:
+        return None, raw
+    hits.sort(key=lambda x: x[0])
+    start, end, label = hits[-1]
+    stripped = (raw[:start] + raw[end:]).strip()
+    stripped = re.sub(r"\s+", " ", stripped).strip(" ,.-")
+    return label, stripped or raw
 
 
 def resolve_budget_category(name: str) -> str | None:
@@ -419,6 +458,10 @@ def _sheet_category(expense: dict[str, Any]) -> str:
     default = os.environ.get("GOOGLE_SHEETS_CATEGORY_DEFAULT", "Daily").strip() or "Daily"
     if default not in _SHEET_CATEGORIES:
         default = "Daily"
+
+    explicit = resolve_budget_category(str(expense.get("category") or ""))
+    if explicit:
+        return explicit
 
     note = (expense.get("note") or "").lower()
     for keywords, label in _NOTE_TO_SHEET:
