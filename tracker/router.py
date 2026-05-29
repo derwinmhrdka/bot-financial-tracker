@@ -111,6 +111,10 @@ def is_tracker_message(text: str) -> bool:
         return True
     if re.search(r"\b(pindah|transfer)\b", lower):
         return True
+    from tracker.query import parse_query
+
+    if parse_query(raw):
+        return True
     if any(k in lower for k in ("sisa", "saldo")):
         return True
     if any(k in lower for k in ("total", "ringkasan", "summary", "rekap")):
@@ -152,6 +156,12 @@ def route_message(text: str, user_id: int) -> str:
         code, reply = _invoke(["transfer", "--user-id", uid, "--text", raw])
         return reply
 
+    from tracker.query import parse_query
+
+    if parse_query(raw):
+        code, reply = _invoke(["query", "--user-id", uid, "--text", raw])
+        return reply
+
     if any(k in lower for k in ("sisa", "saldo")) and "pindah" not in lower:
         args = ["sisa", "--user-id", uid, "--text", raw]
         if month:
@@ -177,7 +187,7 @@ def route_message(text: str, user_id: int) -> str:
         code, reply = _invoke(args)
         return reply
 
-    if extract_amount(raw) or parse_message_candidate(raw):
+    if (extract_amount(raw) or parse_message_candidate(raw)) and not parse_query(raw):
         code, reply = _invoke(
             ["add", "--user-id", uid, "--text", raw, "--source", "telegram"]
         )

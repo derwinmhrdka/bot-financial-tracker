@@ -30,11 +30,13 @@ from tracker.format import (
     format_summary,
     format_undo,
     format_transfer,
+    format_query_result,
 )
 from tracker.parse import parse_message
 from tracker.transfer import parse_transfer
+from tracker.query import parse_query, search_expenses
 
-_COMMANDS = frozenset({"add", "list", "summary", "undo", "delete", "sisa", "transfer", "help"})
+_COMMANDS = frozenset({"add", "list", "summary", "undo", "delete", "sisa", "transfer", "query", "help"})
 _FLAG_TAKES_VALUE = frozenset(
     {"--user-id", "--amount", "--category", "--note", "--text", "--source", "--limit", "--month", "--db"}
 )
@@ -103,6 +105,10 @@ def _normalize_argv(argv: list[str]) -> list[str]:
         return global_flags
 
     joined = " ".join(rest)
+    if rest[0] not in _COMMANDS and parse_query(joined):
+        uid = _default_user_id()
+        if uid:
+            return global_flags + ["query", "--user-id", uid, "--text", joined]
     if rest[0] not in _COMMANDS and re.search(r"\b(pindah|transfer)\b", joined, re.IGNORECASE):
         uid = _default_user_id()
         if uid:
@@ -282,6 +288,30 @@ def cmd_sisa(args: argparse.Namespace) -> int:
     return _emit({**data, "telegram_reply": format_sisa(data)}, 0 if data.get("ok") else 1)
 
 
+def cmd_query(args: argparse.Namespace) -> int:
+    spec = parse_query(args.text or "")
+    if not spec:
+        return _emit(
+            {
+                "ok": False,
+                "error": "parse_failed",
+                "telegram_reply": format_error(
+                    "Contoh: sudah berapa infaq bulan ini? · berapa kali bensin? · daily lebih dari 200k"
+                ),
+            },
+            1,
+        )
+    with connect(Path(args.db) if args.db else None) as conn:
+        rows = search_expenses(conn, user_id=args.user_id, spec=spec)
+    return _emit(
+        {
+            "ok": True,
+            "count": len(rows),
+            "telegram_reply": format_query_result(spec.label, rows),
+        }
+    )
+
+
 def cmd_transfer(args: argparse.Namespace) -> int:
     spec = parse_transfer(args.text or "")
     if not spec:
@@ -377,6 +407,11 @@ def main(argv: list[str] | None = None) -> int:
     tr_p.add_argument("--user-id", required=True)
     tr_p.add_argument("--text", required=True)
     tr_p.set_defaults(func=cmd_transfer)
+
+    qy_p = sub.add_parser("query")
+    qy_p.add_argument("--user-id", required=True)
+    qy_p.add_argument("--text", required=True)
+    qy_p.set_defaults(func=cmd_query)
 
     sub.add_parser("help").set_defaults(func=cmd_help)
 

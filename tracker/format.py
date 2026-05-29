@@ -170,6 +170,39 @@ def format_sisa(data: dict[str, Any]) -> str:
     )
 
 
+def _query_date(iso: str) -> str:
+    try:
+        dt = datetime.fromisoformat(iso.replace("Z", "+00:00"))
+        return dt.strftime("%d %b %Y")
+    except ValueError:
+        return (iso or "")[:10]
+
+
+def format_query_result(spec_label: str, rows: list[dict[str, Any]]) -> str:
+    if not rows:
+        return f"📭 Tidak ada data untuk: {spec_label}"
+
+    total = sum(int(r.get("amount") or 0) for r in rows)
+    lines = [
+        f"📊 {spec_label}",
+        f"{len(rows)} transaksi · total {format_idr(total)}",
+        "",
+    ]
+    for row in rows[:25]:
+        note = (row.get("note") or "").strip() or "—"
+        cat = (row.get("category") or "").strip()
+        cat_bit = f" · {cat}" if cat else ""
+        who = (row.get("attributed_to") or "").strip()
+        who_bit = f" · {who}" if who else ""
+        lines.append(
+            f"• {_query_date(str(row.get('created_at', '')))} — "
+            f"{format_idr(int(row['amount']))} · {note}{cat_bit}{who_bit} (#{row['id']})"
+        )
+    if len(rows) > 25:
+        lines.append(f"\n… +{len(rows) - 25} transaksi lagi (pakai list)")
+    return "\n".join(lines)
+
+
 def format_help() -> str:
     return (
         "💡 Bot Catat Pengeluaran\n\n"
@@ -183,6 +216,7 @@ def format_help() -> str:
         "• Kategori di pesan: entertain jus 10k · jus 10k daily · transport gojek 25rb\n"
         "• Nama di akhir (kolom G): makan 35rb - Anggita · jus 10k -A · kopi 5rb - D\n"
         "• Pindah saldo: pindah daily ke entertain 100k\n"
+        "• Tanya: sudah berapa infaq bulan ini? · berapa kali bensin? · daily lebih dari 200k\n"
         "• list 10 — riwayat\n"
         "• undo — hapus terakhir\n"
         "• hapus #12 — hapus by id\n\n"
