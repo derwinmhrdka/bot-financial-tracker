@@ -13,29 +13,14 @@ from tracker.parse import extract_amount
 
 _REPO = Path(__file__).resolve().parent.parent
 
-_MONTH_WORDS: dict[str, str] = {
-    "januari": "JANUARY",
-    "februari": "FEBRUARY",
-    "maret": "MARCH",
-    "april": "APRIL",
-    "mei": "MAY",
-    "juni": "JUNE",
-    "juli": "JULY",
-    "agustus": "AUGUST",
-    "september": "SEPTEMBER",
-    "oktober": "OCTOBER",
-    "november": "NOVEMBER",
-    "desember": "DECEMBER",
-    "january": "JANUARY",
-    "february": "FEBRUARY",
-    "march": "MARCH",
-    "may": "MAY",
-    "june": "JUNE",
-    "july": "JULY",
-    "august": "AUGUST",
-    "october": "OCTOBER",
-    "december": "DECEMBER",
-}
+
+def _month_from_text(text: str) -> str | None:
+    from tracker.dates import month_filter_from_text
+
+    mf = month_filter_from_text(text)
+    if mf.explicit and mf.prefix:
+        return mf.prefix
+    return None
 
 
 def _telegram_user_id(user_id: int) -> str:
@@ -69,14 +54,6 @@ def normalize_telegram_text(text: str) -> str:
     if raw.startswith("/"):
         raw = raw[1:].split("@", 1)[0].strip()
     return raw
-
-
-def _month_from_text(text: str) -> str | None:
-    lower = text.lower()
-    for word, sheet in _MONTH_WORDS.items():
-        if word in lower:
-            return sheet
-    return None
 
 
 def is_tracker_message(text: str) -> bool:

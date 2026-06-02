@@ -221,6 +221,7 @@ def format_help() -> str:
         "Perintah:\n"
         "• total — ringkasan DB\n"
         "• sisa daily / sisa semua — anggaran (Google Sheet)\n"
+        "• sisa juni / sisa daily juni — sisa per bulan\n"
         "• Kategori di pesan: entertain jus 10k · jus 10k daily · transport gojek 25rb\n"
         "• Nama di akhir (kolom G): makan 35rb - Anggita · jus 10k -A · kopi 5rb - D\n"
         "• Pindah saldo: pindah daily ke entertain 100k\n"

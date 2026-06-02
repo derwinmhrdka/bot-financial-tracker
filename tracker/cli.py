@@ -266,9 +266,14 @@ def cmd_delete(args: argparse.Namespace) -> int:
 
 
 def cmd_sisa(args: argparse.Namespace) -> int:
+    from tracker.dates import month_filter_from_text
+
     text = (args.text or "").lower()
+    mf = month_filter_from_text(args.text or "") if args.text else None
+    month = args.month or (mf.prefix if mf and mf.prefix else None)
+
     if args.all or "semua" in text or "all" in text:
-        data = sheets.read_all_balances(args.month)
+        data = sheets.read_all_balances(month)
         return _emit({**data, "telegram_reply": format_sisa_all(data)}, 0 if data.get("ok") else 1)
 
     category = args.category
@@ -276,6 +281,11 @@ def cmd_sisa(args: argparse.Namespace) -> int:
         from tracker.sheets import category_from_query
 
         category = category_from_query(args.text) or category
+
+    if not category and mf and mf.explicit and mf.prefix:
+        data = sheets.read_all_balances(month)
+        return _emit({**data, "telegram_reply": format_sisa_all(data)}, 0 if data.get("ok") else 1)
+
     if not category:
         return _emit(
             {
@@ -287,7 +297,7 @@ def cmd_sisa(args: argparse.Namespace) -> int:
             },
             1,
         )
-    data = sheets.read_category_balance(category, args.month)
+    data = sheets.read_category_balance(category, month)
     return _emit({**data, "telegram_reply": format_sisa(data)}, 0 if data.get("ok") else 1)
 
 

@@ -203,11 +203,14 @@ def _parse_created_at(created_at: str) -> datetime:
 
 
 def _sheet_date(created_at: str) -> str:
-    return _parse_created_at(created_at).strftime("%Y-%m-%d")
+    dt = _parse_created_at(created_at)
+    return dt.strftime("%Y-%m-%d")
 
 
 def _sheet_periode(created_at: str) -> str:
-    return _MONTH_EN[_parse_created_at(created_at).month]
+    from tracker.dates import budget_sheet_from_created_at, month_num_to_budget_sheet
+
+    return budget_sheet_from_created_at(created_at) or month_num_to_budget_sheet(datetime.now().month)
 
 
 # Hint kata → kategori sheet (urut panjang dulu agar "personal savings" sebelum "savings")
@@ -288,22 +291,21 @@ def category_from_query(text: str) -> str | None:
     lower = (text or "").lower()
     if not any(k in lower for k in ("sisa", "saldo", "remaining", "anggaran")):
         return None
+    from tracker.dates import strip_month_words
+
+    cleaned = strip_month_words(text)
+    if cleaned:
+        cat = resolve_budget_category(cleaned)
+        if cat:
+            return cat
     return resolve_budget_category(text)
 
 
 def month_to_budget_sheet(month: str | None = None) -> str:
-    """Bulan ini → MAY; atau terima MAY / 2026-05."""
-    if not month or not month.strip():
-        return datetime.now().strftime("%B").upper()
-    m = month.strip()
-    if len(m) <= 12 and m.replace("-", "").isalpha():
-        return m.upper()
-    try:
-        if len(m) == 7 and "-" in m:
-            return datetime.strptime(f"{m}-01", "%Y-%m-%d").strftime("%B").upper()
-    except ValueError:
-        pass
-    return datetime.now().strftime("%B").upper()
+    """Bulan ini → JUNE; atau terima JUNE / 2026-06 / mei."""
+    from tracker.dates import month_prefix_to_budget_sheet
+
+    return month_prefix_to_budget_sheet(month)
 
 
 def _parse_sheet_amount(value: Any) -> int:
@@ -442,7 +444,10 @@ def low_balance_warning(expense: dict[str, Any]) -> str:
     except ValueError:
         pct_limit = 0.1
     sheet_cat = _sheet_category(expense)
-    bal = read_category_balance(sheet_cat)
+    from tracker.dates import budget_sheet_from_created_at
+
+    month = budget_sheet_from_created_at(str(expense.get("created_at") or ""))
+    bal = read_category_balance(sheet_cat, month)
     if not bal.get("ok"):
         return ""
     plan = int(bal.get("plan") or 0)

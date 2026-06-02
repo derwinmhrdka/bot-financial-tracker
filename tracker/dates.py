@@ -1,4 +1,4 @@
-"""Parse tanggal & bulan dari pesan natural (ID/EN)."""
+"""Parse tanggal & bulan dari pesan natural (ID/EN). Tab sheet: JANUARY … DECEMBER."""
 
 from __future__ import annotations
 
@@ -31,11 +31,73 @@ MONTH_ID: dict[str, int] = {
     "december": 12,
 }
 
+_MONTH_EN = (
+    "JANUARY",
+    "FEBRUARY",
+    "MARCH",
+    "APRIL",
+    "MAY",
+    "JUNE",
+    "JULY",
+    "AUGUST",
+    "SEPTEMBER",
+    "OCTOBER",
+    "NOVEMBER",
+    "DECEMBER",
+)
+
 _ALL_TIME_PHRASES = ("semua bulan", "semua waktu", "sepanjang waktu", "all time")
 _CURRENT_MONTH_PHRASES = ("bulan ini", "bulan sekarang", "this month")
 _LAST_MONTH_PHRASES = ("bulan lalu", "bulan kemarin", "last month")
 
 _MONTH_NAME_ALT = "|".join(re.escape(w) for w in sorted(MONTH_ID.keys(), key=len, reverse=True))
+
+
+def month_num_to_budget_sheet(month: int) -> str:
+    """Angka bulan 1–12 → nama tab (JUNE, AUGUST, …)."""
+    if 1 <= month <= 12:
+        return _MONTH_EN[month - 1]
+    return _MONTH_EN[datetime.now().month - 1]
+
+
+def month_prefix_to_budget_sheet(month: str | None = None) -> str:
+    """YYYY-MM / JUNE / mei / None → nama tab sheet Inggris."""
+    if not month or not str(month).strip():
+        return month_num_to_budget_sheet(datetime.now().month)
+
+    m = str(month).strip()
+    if len(m) == 7 and "-" in m:
+        try:
+            dt = datetime.strptime(f"{m}-01", "%Y-%m-%d")
+            return month_num_to_budget_sheet(dt.month)
+        except ValueError:
+            pass
+
+    lower = m.lower()
+    if lower in MONTH_ID:
+        return month_num_to_budget_sheet(MONTH_ID[lower])
+
+    upper = m.upper()
+    if upper in _MONTH_EN:
+        return upper
+
+    return month_num_to_budget_sheet(datetime.now().month)
+
+
+def budget_sheet_from_created_at(created_at: str | None) -> str | None:
+    """Bulan transaksi dari created_at → tab sheet (sesuai tanggal tercatat)."""
+    if not created_at:
+        return None
+    try:
+        s = str(created_at).strip().replace("Z", "+00:00")
+        dt = datetime.fromisoformat(s)
+        return month_num_to_budget_sheet(dt.month)
+    except ValueError:
+        return None
+
+
+def current_month_prefix() -> str:
+    return datetime.now().strftime("%Y-%m")
 
 
 @dataclass
@@ -63,12 +125,12 @@ def _prev_month_prefix(now: datetime | None = None) -> str:
 
 
 def month_filter_from_text(text: str) -> MonthFilter:
-    """Baca filter bulan dari teks query."""
+    """Baca bulan dari teks (mei, juni, bulan lalu, …)."""
     lower = (text or "").lower()
     if any(p in lower for p in _ALL_TIME_PHRASES):
         return MonthFilter(prefix=None, all_time=True, explicit=True)
     if any(p in lower for p in _CURRENT_MONTH_PHRASES):
-        return MonthFilter(prefix=datetime.now().strftime("%Y-%m"), explicit=True)
+        return MonthFilter(prefix=current_month_prefix(), explicit=True)
     if any(p in lower for p in _LAST_MONTH_PHRASES):
         return MonthFilter(prefix=_prev_month_prefix(), explicit=True)
     for word, num in MONTH_ID.items():
@@ -85,11 +147,34 @@ def resolve_query_month(text: str) -> str | None:
         return None
     if mf.prefix:
         return mf.prefix
-    return datetime.now().strftime("%Y-%m")
+    return current_month_prefix()
 
 
 def month_stop_words() -> frozenset[str]:
-    return frozenset(MONTH_ID.keys()) | frozenset({"lalu", "kemarin", "tgl", "tanggal", "lusa"})
+    return frozenset(MONTH_ID.keys()) | frozenset({"lalu", "kemarin", "tgl", "tanggal", "lusa", "bulan"})
+
+
+def strip_month_words(text: str) -> str:
+    """Hapus kata bulan dari teks (untuk parse kategori di 'sisa daily juni')."""
+    cleaned = (text or "").strip()
+    for phrase in sorted(
+        (
+            *_ALL_TIME_PHRASES,
+            *_CURRENT_MONTH_PHRASES,
+            *_LAST_MONTH_PHRASES,
+            "bulan",
+            "sisa",
+            "saldo",
+            "remaining",
+            "anggaran",
+        ),
+        key=len,
+        reverse=True,
+    ):
+        cleaned = re.sub(rf"\b{re.escape(phrase)}\b", " ", cleaned, flags=re.I)
+    for word in sorted(MONTH_ID.keys(), key=len, reverse=True):
+        cleaned = re.sub(rf"\b{re.escape(word)}\b", " ", cleaned, flags=re.I)
+    return re.sub(r"\s+", " ", cleaned).strip()
 
 
 def _safe_date(year: int, month: int, day: int) -> datetime | None:
@@ -113,13 +198,12 @@ def datetime_to_created_at(dt: datetime) -> str:
 
 
 def extract_expense_datetime(text: str) -> tuple[str | None, str]:
-    """Ambil tanggal transaksi; kembalikan (created_at ISO atau None=sekarang, teks bersih)."""
+    """Tanggal eksplisit di pesan (15 mei, april, kemarin); None = hari ini."""
     raw = (text or "").strip()
     if not raw:
         return None, raw
 
     now = datetime.now()
-    lower = raw.lower()
 
     patterns: list[tuple[re.Pattern[str], str]] = [
         (re.compile(r"\bkemarin\b", re.I), "kemarin"),
@@ -146,12 +230,12 @@ def extract_expense_datetime(text: str) -> tuple[str | None, str]:
             continue
 
         dt: datetime | None = None
-        if kind == "kemarin":
-            dt = _safe_date(now.year, now.month, now.day) - timedelta(days=1)
-        elif kind == "yesterday":
-            dt = _safe_date(now.year, now.month, now.day) - timedelta(days=1)
+        if kind in ("kemarin", "yesterday"):
+            base = _safe_date(now.year, now.month, now.day)
+            dt = base - timedelta(days=1) if base else None
         elif kind == "lusa":
-            dt = _safe_date(now.year, now.month, now.day) - timedelta(days=2)
+            base = _safe_date(now.year, now.month, now.day)
+            dt = base - timedelta(days=2) if base else None
         elif kind == "day_month":
             day = int(m.group(1))
             month = MONTH_ID[m.group(2).lower()]
@@ -175,5 +259,15 @@ def extract_expense_datetime(text: str) -> tuple[str | None, str]:
         cleaned = (raw[: m.start()] + raw[m.end() :]).strip()
         cleaned = re.sub(r"\s+", " ", cleaned).strip(" ,.-")
         return datetime_to_created_at(dt), cleaned
+
+    # Satu kata bulan saja di akhir: "Jajan 10k April"
+    m = re.search(rf"\b({_MONTH_NAME_ALT})\s*$", raw, re.I)
+    if m:
+        month = MONTH_ID[m.group(1).lower()]
+        dt = _safe_date(now.year, month, 1)
+        if dt:
+            cleaned = raw[: m.start()].strip()
+            cleaned = re.sub(r"\s+", " ", cleaned).strip(" ,.-")
+            return datetime_to_created_at(dt), cleaned
 
     return None, raw
