@@ -33,6 +33,14 @@ def format_add(expense: dict[str, Any]) -> str:
     ]
     if who:
         lines.append(f"👤 {who}")
+    created = str(expense.get("created_at") or "")
+    if created:
+        try:
+            dt = datetime.fromisoformat(created.replace("Z", "+00:00"))
+            if dt.date() != datetime.now(dt.tzinfo).date():
+                lines.append(f"📅 {_short_date(created)}")
+        except ValueError:
+            pass
     lines.append(f"🆔 #{expense['id']}")
     return "\n".join(lines)
 
@@ -216,7 +224,8 @@ def format_help() -> str:
         "• Kategori di pesan: entertain jus 10k · jus 10k daily · transport gojek 25rb\n"
         "• Nama di akhir (kolom G): makan 35rb - Anggita · jus 10k -A · kopi 5rb - D\n"
         "• Pindah saldo: pindah daily ke entertain 100k\n"
-        "• Tanya: sudah berapa infaq bulan ini? · berapa kali bensin? · daily lebih dari 200k\n"
+        "• Tanggal: makan 35rb kemarin · infaq 50k 15 mei · kopi 20rb tgl 10\n"
+        "• Tanya: berapa kali bensin? (bulan ini) · infaq bulan lalu · daily lebih dari 200k · semua bulan\n"
         "• list 10 — riwayat\n"
         "• undo — hapus terakhir\n"
         "• hapus #12 — hapus by id\n\n"

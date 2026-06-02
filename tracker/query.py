@@ -7,31 +7,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
+from tracker.dates import month_filter_from_text, month_stop_words, resolve_query_month
 from tracker.parse import extract_amount
-
-_MONTH_ID: dict[str, int] = {
-    "januari": 1,
-    "februari": 2,
-    "maret": 3,
-    "april": 4,
-    "mei": 5,
-    "juni": 6,
-    "juli": 7,
-    "agustus": 8,
-    "september": 9,
-    "oktober": 10,
-    "november": 11,
-    "desember": 12,
-    "january": 1,
-    "february": 2,
-    "march": 3,
-    "may": 5,
-    "june": 6,
-    "july": 7,
-    "august": 8,
-    "october": 10,
-    "december": 12,
-}
 
 _QUERY_MARKERS = (
     "berapa",
@@ -78,29 +55,12 @@ _STOP_WORDS = frozenset(
         "nominal",
         "tanggal",
         "kapan",
+        "lalu",
+        "kemarin",
+        "lusa",
+        "tgl",
     }
-)
-
-
-@dataclass
-class ParsedQuery:
-    keywords: list[str]
-    category: str | None
-    month_prefix: str | None  # YYYY-MM
-    min_amount: int | None
-    max_amount: int | None
-    label: str  # judul untuk balasan
-
-
-def _month_prefix_from_text(text: str) -> str | None:
-    lower = text.lower()
-    if any(p in lower for p in ("bulan ini", "bulan sekarang", "this month")):
-        return datetime.now().strftime("%Y-%m")
-    for word, num in _MONTH_ID.items():
-        if re.search(rf"\b{re.escape(word)}\b", lower):
-            y = datetime.now().year
-            return f"{y}-{num:02d}"
-    return None
+) | month_stop_words()
 
 
 def _extract_category(text: str) -> str | None:
@@ -121,6 +81,16 @@ def _extract_category(text: str) -> str | None:
         if re.search(rf"\b{re.escape(cat.lower())}\b", lower):
             return resolve_budget_category(cat)
     return resolve_budget_category(text)
+
+
+@dataclass
+class ParsedQuery:
+    keywords: list[str]
+    category: str | None
+    month_prefix: str | None  # YYYY-MM; None = semua waktu
+    min_amount: int | None
+    max_amount: int | None
+    label: str  # judul untuk balasan
 
 
 def _extract_thresholds(text: str) -> tuple[int | None, int | None]:
@@ -230,22 +200,22 @@ def parse_query(text: str) -> ParsedQuery | None:
     has_marker = any(m in lower for m in _QUERY_MARKERS)
     min_a, max_a = _extract_thresholds(raw)
     has_threshold = min_a is not None or max_a is not None
+    month_info = month_filter_from_text(raw)
+    has_explicit_month = month_info.explicit
     category = _extract_category(raw)
-    month_prefix = _month_prefix_from_text(raw)
+    month_prefix = resolve_query_month(raw)
     keywords = _extract_keywords(raw, category)
 
-    if not has_marker and not has_threshold and "?" not in raw:
+    if not has_marker and not has_threshold and "?" not in raw and not has_explicit_month:
         return None
     if not keywords and not category and not has_threshold:
         return None
 
-    # Hindari tertukar perintah catat: "makan 35rb" tanpa kata tanya
-    if not has_marker and not has_threshold:
+    # Hindari tertukar perintah catat: "makan 35rb" / "infaq 50k 15 mei"
+    if extract_amount(raw) and not has_marker and not has_threshold:
         return None
-    if has_marker and extract_amount(raw) and not category and not keywords:
-        tail = raw.lower().split()[-2:]
-        if any(re.search(r"\d", t) for t in tail) and "berapa" not in lower:
-            return None
+    if not has_marker and not has_threshold and not has_explicit_month:
+        return None
 
     label = _build_label(keywords, category, month_prefix, min_a, max_a)
     return ParsedQuery(

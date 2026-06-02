@@ -57,8 +57,12 @@ Setelah ubah skill/AGENTS: `.\deploy\install.ps1` (otomatis set `tool_progress: 
 | `sisa daily` / `sisa semua` | Sisa anggaran (sheet MAY/JUNE) |
 | `hapus #12` | Hapus transaksi by id (+ sheet) |
 | `pindah daily ke entertain 100k` | Pindah saldo (Daily +100k, Entertain -100k) |
-| `sudah berapa infaq bulan ini?` | Cari riwayat (jumlah, tanggal, nominal) |
-| `berapa kali bensin?` / `daily lebih dari 200k` | Filter kata kunci / kategori |
+| `sudah berapa infaq bulan ini?` | Cari riwayat bulan ini (default) |
+| `berapa kali bensin?` | Cari bulan berjalan (bukan semua waktu) |
+| `infaq bulan lalu` / `infaq bulan mei` | Filter bulan tertentu |
+| `bensin semua bulan` | Cari tanpa batas bulan |
+| `daily lebih dari 200k` | Filter kategori + nominal |
+| `makan 35rb kemarin` / `infaq 50k 15 mei` | Catat dengan tanggal lampau |
 | `bantuan` | Panduan |
 
 ### Kelola user (admin saja)

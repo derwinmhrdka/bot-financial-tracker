@@ -192,8 +192,10 @@ def cmd_add(args: argparse.Namespace) -> int:
         note = note or parsed.note
         category = category or parsed.category
         attributed_to = getattr(parsed, "attributed_to", None)
+        created_at = getattr(parsed, "created_at", None)
     else:
         attributed_to = None
+        created_at = None
     if amount is None:
         return _emit(
             {"ok": False, "error": "missing_amount", "telegram_reply": format_error("Jumlah wajib diisi")},
@@ -208,6 +210,7 @@ def cmd_add(args: argparse.Namespace) -> int:
             note=note,
             source=args.source,
             attributed_to=attributed_to,
+            created_at=created_at,
         )
     sheets.sync_append(row)
     reply = format_add(row) + sheets.low_balance_warning(row)

@@ -12,6 +12,7 @@ class ParsedExpense:
     note: str
     category: str | None
     attributed_to: str | None = None
+    created_at: str | None = None
 
 
 # Akhiran "- Anggita", "-A", "- D" → kolom nama di sheet (G), apa adanya
@@ -184,8 +185,14 @@ def guess_category(text: str) -> str | None:
 
 
 def parse_message(text: str) -> ParsedExpense | None:
-    """Parse e.g. 'makan siang 35rb', 'Entertain jus 10k', 'jus 10k daily'."""
+    """Parse e.g. 'makan siang 35rb', 'makan 35rb kemarin', 'infaq 50k 15 mei'."""
     cleaned = text.strip()
+    if not cleaned:
+        return None
+
+    from tracker.dates import extract_expense_datetime
+
+    created_at, cleaned = extract_expense_datetime(cleaned)
     if not cleaned:
         return None
 
@@ -212,4 +219,5 @@ def parse_message(text: str) -> ParsedExpense | None:
         note=note,
         category=category,
         attributed_to=attributed_to,
+        created_at=created_at,
     )
