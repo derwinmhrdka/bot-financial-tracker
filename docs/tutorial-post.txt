@@ -1,0 +1,38 @@
+<p>Kalau kamu sering lupa catat pengeluaran, bot ini bisa jadi solusi sederhana yang langsung kepakai. Kamu cukup kirim chat di Telegram seperti <code>makan 35rb</code>, lalu data langsung tersimpan.</p>
+<p><img src="https://domainkamu.com/assets/og/bot-financial-tracker-og.jpg" alt="Tutorial Bot Financial Tracker Telegram" width="1200" height="630" loading="eager"></p>
+<p>Di tutorial ini, kita setup dari nol sampai bot siap dipakai harian.</p>
+
+<p><strong>Step 1 — Clone project</strong></p>
+<p>Ambil source code ke komputer kamu:</p>
+<p><code>git clone https://github.com/derwinmhrdka/bot-financial-tracker.git</code><br><code>cd bot-financial-tracker</code></p>
+
+<p><strong>Step 2 — Buat file env</strong></p>
+<p>Copy template env:</p>
+<p><code>copy deploy\env.local.example .env.local</code></p>
+
+<p>Isi file <code>.env.local</code> seperti contoh aman berikut:</p>
+<p><code>TELEGRAM_BOT_TOKEN=ISI_TOKEN_BOT_KAMU</code><br><code>TELEGRAM_ALLOWED_USERS=123456789</code><br><code>TELEGRAM_ADMIN_USERS=123456789</code><br><code>FINTRACKER_DB_PATH=./data/expenses.db</code><br><code>GOOGLE_SHEETS_ENABLED=false</code><br><code>GOOGLE_SHEETS_SPREADSHEET_ID=</code><br><code>GOOGLE_SERVICE_ACCOUNT_FILE=./secrets/google-service-account.json</code><br><code>GOOGLE_SHEETS_WORKSHEET=DETAIL</code><br><code>GOOGLE_SHEETS_LAYOUT=detail</code><br><code>GOOGLE_SHEETS_CATEGORY_DEFAULT=Daily</code><br><code>GOOGLE_SHEETS_BUDGET_RANGE=A2:E25</code></p>
+
+<p>Catatan: jangan publish token bot, ID asli, atau credential JSON di postingan publik.</p>
+
+<p><strong>Step 3 — Install dependency</strong></p>
+<p><code>pip install -r requirements.txt</code></p>
+
+<p><strong>Step 4 — Jalankan bot</strong></p>
+<p><code>.\scripts\start-telegram-bot.ps1</code></p>
+
+<p><strong>Step 5 — Tes dari Telegram</strong></p>
+<p>Kirim chat berikut:</p>
+<p><code>makan 35rb</code><br><code>sisa daily</code><br><code>total bulan ini</code><br><code>list 10</code></p>
+
+<p><strong>Contoh query natural language</strong></p>
+<p><code>Sudah berapa kali bensin?</code><br><code>Sudah berapa infaq bulan ini?</code><br><code>Daily lebih dari 200k</code></p>
+
+<p><strong>Aturan bulan (simple)</strong></p>
+<p><code>makan 35rb</code> → bulan berjalan<br><code>jajan 10k April</code> → masuk April<br><code>sisa juni</code> → baca budget tab JUNE</p>
+
+<p><strong>Opsional: Google Sheets</strong></p>
+<p>Kalau mau sinkron ke spreadsheet, aktifkan <code>GOOGLE_SHEETS_ENABLED=true</code> lalu isi spreadsheet ID dan service account file. Untuk tab budget gunakan nama bulan Inggris: <code>JANUARY</code>, <code>MAY</code>, <code>JUNE</code>, dan seterusnya.</p>
+
+<p><strong>Penutup</strong></p>
+<p>Selesai. Dengan setup ini, kamu sudah punya bot financial tracker yang ringan, cepat, dan enak dipakai langsung dari Telegram.</p>

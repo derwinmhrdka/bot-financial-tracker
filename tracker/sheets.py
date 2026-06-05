@@ -208,9 +208,11 @@ def _sheet_date(created_at: str) -> str:
 
 
 def _sheet_periode(created_at: str) -> str:
-    from tracker.dates import budget_sheet_from_created_at, month_num_to_budget_sheet
-
-    return budget_sheet_from_created_at(created_at) or month_num_to_budget_sheet(datetime.now().month)
+    """Kolom Periode di DETAIL: June, May, … (bukan nama tab JUNE/MAY)."""
+    dt = _parse_created_at(created_at)
+    if 1 <= dt.month <= 12:
+        return _MONTH_EN[dt.month]
+    return _MONTH_EN[datetime.now().month]
 
 
 # Hint kata → kategori sheet (urut panjang dulu agar "personal savings" sebelum "savings")

@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#eff6ff"/>
+      <stop offset="100%" stop-color="#ecfeff"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect x="72" y="70" width="540" height="490" rx="22" fill="#ffffff" stroke="#cbd5e1"/>
+  <rect x="98" y="112" width="488" height="60" rx="12" fill="#2563eb"/>
+  <text x="122" y="150" font-family="Arial, sans-serif" font-size="24" fill="#ffffff">Telegram Bot Financial Tracker</text>
+  <rect x="98" y="198" width="340" height="56" rx="12" fill="#e2e8f0"/>
+  <text x="120" y="232" font-family="Arial, sans-serif" font-size="22" fill="#0f172a">makan 35rb</text>
+  <rect x="248" y="278" width="338" height="56" rx="12" fill="#dbeafe"/>
+  <text x="268" y="312" font-family="Arial, sans-serif" font-size="22" fill="#1e3a8a"> Tercatat Rp 35.000</text>
+  <rect x="98" y="358" width="320" height="56" rx="12" fill="#e2e8f0"/>
+  <text x="120" y="392" font-family="Arial, sans-serif" font-size="22" fill="#0f172a">sisa daily</text>
+  <rect x="248" y="438" width="338" height="88" rx="12" fill="#dcfce7"/>
+  <text x="268" y="472" font-family="Arial, sans-serif" font-size="22" fill="#166534">Daily  JUNE</text>
+  <text x="268" y="502" font-family="Arial, sans-serif" font-size="20" fill="#166534">Sisa: Rp 2.150.000</text>
+
+  <rect x="666" y="110" width="460" height="450" rx="22" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="700" y="160" font-family="Arial, sans-serif" font-size="30" font-weight="bold" fill="#0f172a">Ringkasan Bulan Ini</text>
+  <rect x="700" y="190" width="390" height="84" rx="14" fill="#f1f5f9"/>
+  <text x="726" y="228" font-family="Arial, sans-serif" font-size="22" fill="#334155">Total Pengeluaran</text>
+  <text x="726" y="258" font-family="Arial, sans-serif" font-size="28" font-weight="bold" fill="#0f172a">Rp 4.920.000</text>
+  <rect x="700" y="302" width="390" height="62" rx="12" fill="#fee2e2"/>
+  <text x="726" y="340" font-family="Arial, sans-serif" font-size="22" fill="#991b1b">Primary: Rp 1.800.000</text>
+  <rect x="700" y="378" width="390" height="62" rx="12" fill="#ffedd5"/>
+  <text x="726" y="416" font-family="Arial, sans-serif" font-size="22" fill="#9a3412">Daily: Rp 1.250.000</text>
+  <rect x="700" y="454" width="390" height="62" rx="12" fill="#dbeafe"/>
+  <text x="726" y="492" font-family="Arial, sans-serif" font-size="22" fill="#1e3a8a">Transport: Rp 670.000</text>
+</svg>
