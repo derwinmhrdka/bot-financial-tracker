@@ -24,4 +24,4 @@ jobs:
             if [ -z "$APP_DIR" ]; then APP_DIR="/opt/bot-financial-tracker"; fi
             cd "$APP_DIR"
             bash deploy/git-sync.sh
-            bash deploy/remote-deploy.sh
+            bash deploy/docker-deploy.sh

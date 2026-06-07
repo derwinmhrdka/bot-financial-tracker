@@ -1,0 +1,10 @@
+services:
+  fintracker-bot:
+    build: .
+    image: fintracker-bot:latest
+    container_name: fintracker-bot
+    restart: unless-stopped
+    volumes:
+      - ./.env.local:/app/.env.local:ro
+      - ./data:/app/data
+      - ./secrets:/app/secrets:ro
