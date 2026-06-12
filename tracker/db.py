@@ -54,6 +54,8 @@ def init_schema(conn: sqlite3.Connection) -> None:
     cols = {row[1] for row in conn.execute("PRAGMA table_info(expenses)")}
     if "attributed_to" not in cols:
         conn.execute("ALTER TABLE expenses ADD COLUMN attributed_to TEXT")
+    if "backend_id" not in cols:
+        conn.execute("ALTER TABLE expenses ADD COLUMN backend_id INTEGER")
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_expenses_user_created "
         "ON expenses (user_id, created_at DESC)"
@@ -157,6 +159,13 @@ def get_expense_by_id(
         (expense_id, user_id),
     ).fetchone()
     return dict(row) if row else None
+
+
+def set_backend_id(conn: sqlite3.Connection, *, expense_id: int, backend_id: int) -> None:
+    conn.execute(
+        "UPDATE expenses SET backend_id = ? WHERE id = ?",
+        (backend_id, expense_id),
+    )
 
 
 def get_last_expense(conn: sqlite3.Connection, *, user_id: str) -> dict[str, Any] | None:

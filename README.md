@@ -135,6 +135,35 @@ Ringkas:
 
 Alternatif Hermes: `deploy/install.sh` + `deploy/config.snippet.yaml`.
 
+## Airafin dashboard (Phase 2)
+
+Bot bisa sinkron ke **[airafin-dashboard](https://github.com/derwinmhrdka/airafin-dashboard)** (PostgreSQL + web UI) lewat REST API.
+
+```env
+AIRAFIN_API_ENABLED=true
+AIRAFIN_API_URL=http://localhost:3081
+API_SECRET_TOKEN=change-me-in-production
+AIRAFIN_DEFAULT_STATUS=Done
+FINTRACKER_DEFAULT_PIC=Derwin
+```
+
+| Aksi bot | Sinkron dashboard |
+|----------|-------------------|
+| `makan 35rb` | `POST /api/transactions` (header `X-API-Token`) |
+| `undo` / `hapus #12` | `DELETE /api/transactions/:id` (id dashboard disimpan di SQLite `backend_id`) |
+| `sisa daily` / `sisa semua` | `GET /api/dashboard/summary?period=June+2026` |
+| `pindah daily ke entertain 100k` | Hanya lokal (belum ke API) |
+
+**Penting:** jika `AIRAFIN_API_ENABLED=true`, matikan `GOOGLE_SHEETS_ENABLED` di bot — backend dashboard yang menulis ke Sheets (hindari baris duplikat).
+
+Mapping otomatis:
+
+- Kategori bot → nama Mahardiora (`Daily`, `Transport`, …) → `categoryId` dari `GET /api/categories`
+- Tanggal → `date` + `period` (`June 2026`)
+- Suffix `-A` / `- Anggita` → `pic: Anggita`; `-D` / `- Derwin` → `pic: Derwin`
+
+`API_SECRET_TOKEN` harus sama dengan backend dashboard (`docker-compose` / `.env`).
+
 ## Google Sheets (opsional)
 
 SQLite tetap sumber utama. Setiap **add** / **undo** bisa disalin ke spreadsheet.

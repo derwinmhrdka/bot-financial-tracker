@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -17,7 +18,7 @@ from tracker.db import (
     list_expenses,
     summary_expenses,
 )
-from tracker import sheets
+from tracker import airafin, sheets
 from tracker.format import (
     format_add,
     format_error,
@@ -170,6 +171,23 @@ def _normalize_sisa_tail(tail: list[str]) -> list[str]:
     return out
 
 
+def _sync_delete(row: dict | None) -> None:
+    if not row:
+        return
+    if airafin.is_enabled():
+        backend_id = row.get("backend_id")
+        if backend_id:
+            airafin.sync_delete(int(backend_id))
+    elif sheets.is_enabled():
+        sheets.sync_delete(int(row["id"]))
+
+
+def _low_balance_warning(row: dict) -> str:
+    if airafin.is_enabled():
+        return airafin.low_balance_warning(row)
+    return sheets.low_balance_warning(row)
+
+
 def _emit(payload: dict, code: int = 0) -> int:
     text = json.dumps(payload, ensure_ascii=False, default=str)
     try:
@@ -212,8 +230,16 @@ def cmd_add(args: argparse.Namespace) -> int:
             attributed_to=attributed_to,
             created_at=created_at,
         )
-    sheets.sync_append(row)
-    reply = format_add(row) + sheets.low_balance_warning(row)
+        backend_id = None
+        if airafin.is_enabled():
+            backend_id = airafin.sync_append(row, conn)
+            if backend_id:
+                row["backend_id"] = backend_id
+        elif sheets.is_enabled():
+            sheets.sync_append(row)
+    reply = format_add(row) + _low_balance_warning(row)
+    if airafin.is_enabled() and not row.get("backend_id"):
+        reply += "\n\n⚠️ Gagal sinkron ke dashboard (cek AIRAFIN_API_URL & API_SECRET_TOKEN)."
     return _emit({"ok": True, "expense": row, "telegram_reply": reply})
 
 
@@ -239,7 +265,7 @@ def cmd_undo(args: argparse.Namespace) -> int:
             return _emit({"ok": False, "error": "empty", "telegram_reply": format_undo(None)}, 1)
         ok = delete_expense(conn, expense_id=last["id"], user_id=args.user_id)
     if ok and last:
-        sheets.sync_delete(int(last["id"]))
+        _sync_delete(last)
     return _emit({"ok": ok, "removed": last if ok else None, "telegram_reply": format_undo(last if ok else None)}, 0 if ok else 1)
 
 
@@ -258,7 +284,7 @@ def cmd_delete(args: argparse.Namespace) -> int:
             )
         ok = delete_expense(conn, expense_id=eid, user_id=args.user_id)
     if ok:
-        sheets.sync_delete(eid)
+        _sync_delete(row)
     return _emit(
         {"ok": ok, "removed": row if ok else None, "telegram_reply": format_delete(row if ok else None, eid)},
         0 if ok else 1,
@@ -273,7 +299,11 @@ def cmd_sisa(args: argparse.Namespace) -> int:
     month = args.month or (mf.prefix if mf and mf.prefix else None)
 
     if args.all or "semua" in text or "all" in text:
-        data = sheets.read_all_balances(month)
+        data = (
+            airafin.read_all_balances(month)
+            if airafin.is_enabled()
+            else sheets.read_all_balances(month)
+        )
         return _emit({**data, "telegram_reply": format_sisa_all(data)}, 0 if data.get("ok") else 1)
 
     category = args.category
@@ -283,7 +313,11 @@ def cmd_sisa(args: argparse.Namespace) -> int:
         category = category_from_query(args.text) or category
 
     if not category and mf and mf.explicit and mf.prefix:
-        data = sheets.read_all_balances(month)
+        data = (
+            airafin.read_all_balances(month)
+            if airafin.is_enabled()
+            else sheets.read_all_balances(month)
+        )
         return _emit({**data, "telegram_reply": format_sisa_all(data)}, 0 if data.get("ok") else 1)
 
     if not category:
@@ -297,7 +331,11 @@ def cmd_sisa(args: argparse.Namespace) -> int:
             },
             1,
         )
-    data = sheets.read_category_balance(category, month)
+    data = (
+        airafin.read_category_balance(category, month)
+        if airafin.is_enabled()
+        else sheets.read_category_balance(category, month)
+    )
     return _emit({**data, "telegram_reply": format_sisa(data)}, 0 if data.get("ok") else 1)
 
 
@@ -359,13 +397,17 @@ def cmd_transfer(args: argparse.Namespace) -> int:
             note=note_to,
             source="transfer",
         )
-    sheets.sync_append(out_row)
-    sheets.sync_append(in_row)
+    if airafin.is_enabled():
+        reply = format_transfer(out_row, in_row) + "\n\nℹ️ Transfer saldo hanya lokal — belum disinkron ke dashboard."
+    else:
+        sheets.sync_append(out_row)
+        sheets.sync_append(in_row)
+        reply = format_transfer(out_row, in_row)
     return _emit(
         {
             "ok": True,
             "transfer": {"out": out_row, "in": in_row},
-            "telegram_reply": format_transfer(out_row, in_row),
+            "telegram_reply": reply,
         }
     )
 
