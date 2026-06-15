@@ -13,15 +13,25 @@ from pathlib import Path
 from typing import Any
 
 from tracker import sheets
+from tracker.env import load_env_local
 
 logger = logging.getLogger(__name__)
 
 _MONTH_EN = sheets._MONTH_EN  # noqa: SLF001 — shared month names with Sheets layout
 
 _category_id_by_name: dict[str, int] | None = None
+_env_loaded = False
+
+
+def _ensure_env() -> None:
+    global _env_loaded
+    if not _env_loaded:
+        load_env_local()
+        _env_loaded = True
 
 
 def is_enabled() -> bool:
+    _ensure_env()
     return os.environ.get("AIRAFIN_API_ENABLED", "").strip().lower() in (
         "1",
         "true",
@@ -31,6 +41,7 @@ def is_enabled() -> bool:
 
 
 def config_error() -> str | None:
+    _ensure_env()
     if not is_enabled():
         return "AIRAFIN_API_ENABLED=false"
     base = os.environ.get("AIRAFIN_API_URL", "").strip().rstrip("/")
