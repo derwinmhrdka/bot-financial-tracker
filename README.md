@@ -147,7 +147,7 @@ AIRAFIN_DEFAULT_STATUS=Done
 FINTRACKER_DEFAULT_PIC=Derwin
 ```
 
-**VPS (Docker):** Bot di container — backend airafin di **host** `127.0.0.1:3081`. Set `AIRAFIN_API_URL=http://host.docker.internal:3081` (butuh `extra_hosts` di `docker-compose.yml`). **Jangan** `127.0.0.1` dari dalam container.
+**VPS (Docker):** Sambungkan bot ke jaringan `airafin-dashboard_default`, lalu `AIRAFIN_API_URL=http://backend:3081`. `host.docker.internal` / `127.0.0.1` **tidak jalan** — backend host hanya bind `127.0.0.1:3081`.
 
 Config: `/apps/bot-financial/.env.local` · airafin: `/apps/airafin-dashboard`
 

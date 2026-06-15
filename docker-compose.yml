@@ -4,10 +4,15 @@ services:
     image: fintracker-bot:latest
     container_name: fintracker-bot
     restart: unless-stopped
-    extra_hosts:
-      # Reach airafin backend on host 127.0.0.1:3081 from inside the container
-      - "host.docker.internal:host-gateway"
+    networks:
+      - default
+      - airafin
     volumes:
       - ./.env.local:/app/.env.local:ro
       - ./data:/app/data
       - ./secrets:/app/secrets:ro
+
+networks:
+  airafin:
+    external: true
+    name: airafin-dashboard_default
