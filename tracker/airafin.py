@@ -38,6 +38,9 @@ def config_error() -> str | None:
         return "AIRAFIN_API_URL kosong"
     if not token:
         return "API_SECRET_TOKEN kosong"
+    # Backend API is :3081 — not nginx :3080 redirect or frontend :13080 (requires login).
+    if ":3080" in base or ":13080" in base:
+        return "AIRAFIN_API_URL harus backend :3081 (bukan frontend :3080/:13080)"
     return None
 
 

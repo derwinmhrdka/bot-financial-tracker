@@ -141,11 +141,13 @@ Bot bisa sinkron ke **[airafin-dashboard](https://github.com/derwinmhrdka/airafi
 
 ```env
 AIRAFIN_API_ENABLED=true
-AIRAFIN_API_URL=http://localhost:3081
+AIRAFIN_API_URL=http://127.0.0.1:3081
 API_SECRET_TOKEN=change-me-in-production
 AIRAFIN_DEFAULT_STATUS=Done
 FINTRACKER_DEFAULT_PIC=Derwin
 ```
+
+**VPS:** Bot memanggil **backend** langsung (`127.0.0.1:3081`). Jangan pakai `:3080` (nginx redirect) atau `:13080` (frontend butuh login) — itu menyebabkan `api_error` pada perintah `sisa`.
 
 | Aksi bot | Sinkron dashboard |
 |----------|-------------------|
