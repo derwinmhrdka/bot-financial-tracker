@@ -147,7 +147,9 @@ AIRAFIN_DEFAULT_STATUS=Done
 FINTRACKER_DEFAULT_PIC=Derwin
 ```
 
-**VPS:** Bot memanggil **backend** langsung (`127.0.0.1:3081`). Jangan pakai `:3080` (nginx redirect) atau `:13080` (frontend butuh login) — itu menyebabkan `api_error` pada perintah `sisa`.
+**VPS (Docker):** Bot di container — backend airafin di **host** `127.0.0.1:3081`. Set `AIRAFIN_API_URL=http://host.docker.internal:3081` (butuh `extra_hosts` di `docker-compose.yml`). **Jangan** `127.0.0.1` dari dalam container.
+
+Config: `/apps/bot-financial/.env.local` · airafin: `/apps/airafin-dashboard`
 
 | Aksi bot | Sinkron dashboard |
 |----------|-------------------|

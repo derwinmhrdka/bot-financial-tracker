@@ -9,6 +9,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from datetime import datetime
+from pathlib import Path
 from typing import Any
 
 from tracker import sheets
@@ -41,6 +42,8 @@ def config_error() -> str | None:
     # Backend API is :3081 — not nginx :3080 redirect or frontend :13080 (requires login).
     if ":3080" in base or ":13080" in base:
         return "AIRAFIN_API_URL harus backend :3081 (bukan frontend :3080/:13080)"
+    if Path("/.dockerenv").is_file() and ("127.0.0.1" in base or "localhost" in base):
+        return "Di Docker, AIRAFIN_API_URL=http://host.docker.internal:3081 (bukan 127.0.0.1)"
     return None
 
 
